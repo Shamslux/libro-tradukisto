@@ -1,0 +1,7 @@
+streamlit
+pandas
+beautifulsoup4
+python-dotenv
+google-generativeai
+ebooklib
+lxml

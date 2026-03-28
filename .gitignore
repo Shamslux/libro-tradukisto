@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Env
+.env
+.venv
+env/
+venv/
+
+# Projekto
+eliroj/
+temp_*
+*.epub
+.streamlit/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
