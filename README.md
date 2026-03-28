@@ -1,4 +1,14 @@
 
+![Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)
+![Python](https://img.shields.io/badge/Python-FFD43B?style=for-the-badge&logo=python&logoColor=blue)
+![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)
+![Pandas](https://img.shields.io/badge/Pandas-2C2D72?style=for-the-badge&logo=pandas&logoColor=white)
+![Github](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)
+![Markdown](https://img.shields.io/badge/Markdown-000000?style=for-the-badge&logo=markdown&logoColor=white)
+![JSON](https://img.shields.io/badge/json-5E5C5C?style=for-the-badge&logo=json&logoColor=white)
+![GoogleTranslate](https://img.shields.io/badge/Google%20Translate-4285F4?style=for-the-badge&logo=google-translate&logoColor=white)
+![GPL-3](https://img.shields.io/badge/GPL--3.0-red?style=for-the-badge)
+
 # 📚 LibroTradukisto (Book Translator)
 
 > *"La teknologio ĉiam estis aliancano de Esperanto."*
@@ -29,6 +39,75 @@ However, I felt the need to build a standalone tool with a specific focus on the
 * **Human-in-the-Loop (Manual Editor):** An interactive UI to review, tweak, and perfect the AI's output before compiling the final book.
 * **Resilient Caching:** Progress is saved locally in a JSON file. If the API hits a rate limit or your internet drops, you don't lose a single translated word.
 * **Multilingual UI:** The interface is dynamically translated into 8 languages (English, Esperanto, Portuguese, Spanish, Mandarin, French, German, and Russian). We may face some issues yet, but is usable in most cases.
+
+***
+## 🖼️ Image Simple Tutorial and Tour
+
+![main_page_without_upload](https://github.com/user-attachments/assets/b1e920a6-91f7-4c70-9b54-82e09dafc7a5)
+> Main page before any upload.
+
+![main_page_after_an_upload](https://github.com/user-attachments/assets/d645ca7b-7610-40ab-bb2f-af654176c286)
+> After a book upload. We can use the first tab to analyse the `epub` and its structure. The JSON file will record, for the files uploaded, the structure to be translated.
+> NOTE: The software will not save the file, just the structure, you may reupload it several times till the completion of edition.
+
+![first_tab_1](https://github.com/user-attachments/assets/e5ecce5d-7533-4c56-bd10-6f857218bad3)
+> Here we can see the vision that allows us to understand what was already done (green ones) and what is to be done yet (red ones). In case of fails, we may see yellow ones,
+> meaning the structure is semi-translated.
+
+![first_tab_2](https://github.com/user-attachments/assets/8e8f46d6-18f0-4d92-a235-a32c1e17e8dd)
+> We receive a estimative of how long API will take to translate (data for Gemini API, for Google Translate Free it is almost automatic, since it runs faster.
+> We can choose the blocks we would like to translate. These blocks have subblocks (mostly for GT API, for Gemini, we send the whole HTML block for larger context
+> and to save resources. *Antaŭrigardo de Originala Enhavo* allows the user to have a preview of the HTML block, namely, you will see the renderized ebook content
+> for that block.
+
+![first_tab_3](https://github.com/user-attachments/assets/f216e351-0784-47cb-96c0-cf8b128f20fe)
+> The button for *KOMENCI TRADUKON* starts the process. (Currently, to kill the process, just use the terminal with `CTRL+C` (Windows). I am still thinking in a way to create a 'kill button'.
+> *VIVA MONITORO* allows the user to briefly see the live process of translation. It has been a challenge, but my main goal was to show on the left the original source and, on the right, the translated one.
+> *GENERI EPUB EL KASXO* will generate the new .epub from the cached information (the JSON). It will save the new ebook translated.
+> NOTE: You can try another ebook editor, such as the own Calibre later to modify the metadata. Using Nano Banana 2 is possible to ask it to generate a new cover translated to Esperanto, nice tip, not? :D
+
+![second_tab_1](https://github.com/user-attachments/assets/c0984930-9f73-496f-bf8b-075798b44519)
+> Here we can manually edit the file. This first view is just showing, as the previous tab, the progress of the blocks (which ones were translated, are semi-translated or to be translated yet).
+
+![second_tab_2](https://github.com/user-attachments/assets/b6c99c47-c2e3-4e2a-9577-800e9d8dbfc5)
+> This is where the manual magic happens! We can choose the block/chapter to manually edit. The block view (green/gray blocks) shows the subblocks statuses (how many were translated). Now
+> I adjusted to the block bring the whole HTML, but in previous versions while developping, it was with many fragments based on how it was to send for Google Translate API. One can use `CTRL+ENTER`
+> to apply the adjustments or click on the disk icon button *KONSERVI SXANGXOJN*. Also the user can generate the ebook (totally or not totally translated).
+
+![third_tab_1](https://github.com/user-attachments/assets/297020d6-1f21-4657-ab41-fca06b41d711)
+> This is a more user friendly interface to earase the JSON file. It is possible to manually edit it on the directory using a code editor too.
+> Well, the JSON file registers the structures as it parses the ebooks. For now, I just tested two ebooks, the names of the structures were
+> different, but we may face similar structures, so I advise first complete a translation and after going to the next one (I did not exausted the
+> testing for QA). Anyway, be careful using this tab, since you also may erase the whole file if desired. In this case, all work done will vanish.
+> Think wisely, since while using Gemini API, the blocks translated costs requests, so if you erase the JSON, the already translated blocks will vanish forever.
+> This tab is good when needing to remove a bad block and retranslating it (you also can try using the editing tab, if necessary, but sometimes you may need
+> return the original block for a more precise translation as desired).
+
+![final_tab](https://github.com/user-attachments/assets/5fc0cfcf-7a6d-4d73-a9ab-282d31d8c846)
+> Finally, this is just a tab showing the models found using the API key (mine, in the above example). It does not help too much, I know, but I kept it anyway.
+> For control, I suggest the user to being alert to observe his/her dashboard on **Google AI Studio**.
+
+***
+
+### Shamslux's Note
+
+Although I am a Data Engineer, I need to confess that I do not come from native programming world. So, Python is not my strong side, I mean, surely I could do it,
+but let's be honest: I started using Python in 2022, so LLMs were already here. I rely on them and I am not ashamed, since this whole project took me about 6h.
+I will keep reviewing it and I know out there are many brilliant and much, but much better programmers than me (since I am not some brilliant programmer, I am not
+ashamed allow a machine code for me, since I know these LLMs are coding better than the average of coders).
+
+Well, I focused on trying to create a good process. Surely, it took 6h, so there still things to review. Besides, I did it by myself, what is good for some aspect,
+but bad for other, since we may be "blind" to some attention points others could suggest an improvment. I am open to your suggestions! 
+
+Finally, it was a very fun project and I imagine it may be useful for the Esperantist community. This is my main goal (surely, someone else could also adapt it for
+other languages, why not?). But for now, Esperanto is a strong language that LLMs know a lot about and can generate accurate and good translations and this software
+also allows humans to adjust something they may find not well fit.
+
+In the end, this software, as the own AIs around us, are all tools to help us excel in creativity and create faster solutions for helping others. Well, at least,
+my intention was to help others. ❤️
+
+Thank you all! 
+*Soli Deo Gloria*
 
 ***
 
