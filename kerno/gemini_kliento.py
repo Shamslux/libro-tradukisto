@@ -68,9 +68,10 @@ class GeminiKliento:
         modeloj = self.detaligi_modelojn()
         return [m["nomo"] for m in modeloj]
 
-    def prepari_instruon(self, genro: str, vortaro: dict = None) -> str:
+    def prepari_instruon(self, genro_aux_prompt: str, vortaro: dict = None) -> str:
         """
-        Konstruas la sisteman instrukcion laux la elektita genro kaj injektas la glosaron.
+        Konstruas la sisteman instrukcion laux la elektita genro aux uzas la propran prompton,
+        kaj injektas la glosaron.
         """
         target_lang_name = self.lingvo_nomoj.get(self.cel_lingvo, "Esperanto")
         
@@ -82,27 +83,70 @@ class GeminiKliento:
             "- Liveru NUR la tradukitu HTML-kodon, sen klarigoj.\n"
         )
         
+        # Specifaj reguloj kiam la cel-lingvo estas Esperanto
         if self.cel_lingvo == "eo":
             instruo_base = instruo_base.replace("STILO-REGULOJ:\n", "STILO-REGULOJ:\n- Uzu klasikan stilon (Zamenhofan).\n")
+
+        # Regulo pri bibliaj citaĵoj (kiam aplikebla al la stilo)
+        bible_citation_rule = f"Por bibliaj citaĵoj, uzu la plej agnoskitan oficialan Biblian version en {target_lang_name}."
+        if self.cel_lingvo == "eo":
+            bible_citation_rule = "Por bibliaj citaĵoj, uzu la oficialan Esperantan Biblion (La Sankta Biblio de Zamenhof)."
 
         stiloj = { # Vortaro de stiloj por malsamaj ĝenroj.
             "teologio": (
                 "STILO: Biblia, solena kaj ekumena. REGLOJ: Uzu klasikan vortprovizon. "
-                "1. Por REFORMITA: Uzu biblian simplecon. 2. Por KATOLIKA: Uzu latinidajn terminojn. "
-                "3. Por ORTODOKSA: Preferu grek-devenajn terminojn. Uzu majusklojn por Diaj pronomoj (Li, Lia)."
+                "Uzu majusklojn por Diaj pronomoj (Li, Lia)."
+            ),
+            "kristana_teologio": (
+                "STILO: Biblia, solena kaj ekumena. REGLOJ: Uzu klasikan vortprovizon. "
+                f"{bible_citation_rule} "
+                "Uzu majusklojn por Diaj pronomoj (Li, Lia)."
+            ),
+            "reformita_teologio": (
+                "STILO: Biblia, solena kaj ekumena. REGLOJ: Uzu biblian simplecon kaj klasikan vortprovizon. "
+                f"{bible_citation_rule} "
+                "Uzu majusklojn por Diaj pronomoj (Li, Lia)."
+            ),
+            "katolika_teologio": (
+                "STILO: Biblia, solena kaj ekumena. REGLOJ: Uzu latinidajn terminojn kaj klasikan vortprovizon. "
+                f"{bible_citation_rule} "
+                "Uzu majusklojn por Diaj pronomoj (Li, Lia)."
+            ),
+            "ortodoksa_teologio": (
+                "STILO: Biblia, solena kaj ekumena. REGLOJ: Preferu grek-devenajn terminojn kaj klasikan vortprovizon. "
+                f"{bible_citation_rule} "
+                "Uzu majusklojn por Diaj pronomoj (Li, Lia)."
+            ),
+            "islama_teologio": (
+                "STILO: Respekta kaj formala. REGLOJ: Konservu specifajn islamajn terminojn en ilia originala formo "
+                f"aŭ uzu vaste akceptitajn {target_lang_name}ajn ekvivalentojn. Evitu kristanajn teologiajn esprimojn."
+            ),
+            "budhana_teologio": (
+                "STILO: Meditema kaj filozofia. REGLOJ: Konservu specifajn budhanajn terminojn en ilia originala formo "
+                f"aŭ uzu vaste akceptitajn {target_lang_name}ajn ekvivalentojn. Evitu teismajn aŭ kristanajn teologiajn esprimojn."
+            ),
+            "hindua_teologio": (
+                "STILO: Respekta kaj filozofia. REGLOJ: Konservu specifajn hinduajn terminojn en ilia originala formo "
+                f"aŭ uzu vaste akceptitajn {target_lang_name}ajn ekvivalentojn. Evitu teismajn aŭ kristanajn teologiajn esprimojn."
             ),
             "akademia": (
                 "STILO: Rigora, preciza, neŭtra kaj scienca. REGLOJ: Uzu pasivajn voĉojn por objektiveco; "
                 "konservu teknikajn terminojn laŭ internaciaj sciencaj normoj."
             ),
             "fantasto": "STILO: Epika, evoka kaj atmosfera. REGLOJ: Uzu poeziajn metaforojn; kreu arkaikan senton.",
-            "sciencfikcio": "STILO: Moderna, teknologia kaj futurisma. REGLOJ: Uzu la afiksojn de Esperanto por neologismoj.",
+            "sciencfikcio": (
+                f"STILO: Moderna, teknologia kaj futurisma. REGLOJ: Kreu neologismojn laŭ la lingvaj normoj de {target_lang_name}."
+            ),
             "biografio": "STILO: Rakonta, intimeca kaj historia. REGLOJ: Fokusigu la psikologiajn nuancojn.",
             "poezio": "STILO: Lirika, ritma kaj belsona. REGLOJ: Prioritatu eŭfonion; permesu eliziojn.",
             "generala": f"STILO: Klara, ekvilibra kaj moderna. REGLOJ: Sekvu la 'Baza Literatura Standardo' por {target_lang_name}."
         }
 
-        plena_instruo = f"{instruo_base}\n{stiloj.get(genro.lower(), stiloj['generala'])}"
+        # Kontrolas ĉu la argumento estas konata ŝlosilo el la vortaro, aŭ propra instrukcio de la uzanto
+        if genro_aux_prompt in stiloj:
+            plena_instruo = f"{instruo_base}\n{stiloj[genro_aux_prompt]}"
+        else:
+            plena_instruo = f"{instruo_base}\n{genro_aux_prompt}"
 
         # Injekto de la Glosaro
         if vortaro:
@@ -113,9 +157,9 @@ class GeminiKliento:
 
         return plena_instruo
 
-    def traduki_blokon(self, teksto: str, genro: str, vortaro: dict = None, retestoj: int = 5, **kwargs) -> str:
+    def traduki_blokon(self, teksto: str, genro_aux_prompt: str, vortaro: dict = None, retestoj: int = 5, **kwargs) -> str:
         """Tradukas blokon de teksto uzante la glosaron se disponebla."""
-        instruo = self.prepari_instruon(genro, vortaro)
+        instruo = self.prepari_instruon(genro_aux_prompt, vortaro)
         plena_prompto = f"{instruo}\n\nJEN LA TEKSTO POR TRADUKI:\n{teksto}" # La plena instrukcio por la modelo.
         
         for provo in range(retestoj):

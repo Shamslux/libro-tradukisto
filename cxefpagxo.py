@@ -499,31 +499,49 @@ if motoro:
                             key="download_red_btn"
                         )
 
-    # --- TAB 3: KAŜMEMORA MANAĜILO (JSON) ---
+# --- TAB 3: KAŜMEMORA MANAĜILO (JSON) ---
     with tab_kasxo:
         st.header(t('tab_kasxo.titolo'))
         st.info(t('tab_kasxo.info_forigi'))
-        # Vojo al la JSON-dosiero de kaŝmemoro.
-        vojo_json = os.path.join("eliroj", "progres-konservo.json")
-        if os.path.exists(vojo_json):
-            with open(vojo_json, "r", encoding="utf-8") as f:
-                try: nuna_kasxo = json.load(f)
-                except: nuna_kasxo = {}
+        
+        dosierujo = "eliroj"
+        
+        if not os.path.exists(dosierujo):
+            os.makedirs(dosierujo)
+        
+        dosieroj = [f for f in os.listdir(dosierujo) if f.startswith("progres-konservo-") and f.endswith(".json")]
+        
+        if dosieroj:
+            elektita_dosiero = st.selectbox(
+                t('tab_kasxo.elektu_dosieron'), 
+                dosieroj,
+                index=0
+            )
+            
+            vojo_json = os.path.join(dosierujo, elektita_dosiero)
+            
+            try:
+                with open(vojo_json, "r", encoding="utf-8") as f:
+                    nuna_kasxo = json.load(f)
+            except:
+                nuna_kasxo = {}
             
             if nuna_kasxo:
-                st.write(t('tab_kasxo.ekzistas_blokoj', len(nuna_kasxo))) # Montras la nombron de konservitaj blokoj.
+                st.write(t('tab_kasxo.ekzistas_blokoj', len(nuna_kasxo)))
                 blokoj_por_forigi = st.multiselect(t('tab_kasxo.elektu_restarigi'), sorted(list(nuna_kasxo.keys())))
                 
                 if st.button(t('tab_kasxo.forigi_elektitajn_btn'), type="primary"):
                     if blokoj_por_forigi:
-                        for b in blokoj_por_forigi: del nuna_kasxo[b]
+                        for b in blokoj_por_forigi: 
+                            if b in nuna_kasxo: del nuna_kasxo[b]
+                        
                         with open(vojo_json, "w", encoding="utf-8") as f:
                             json.dump(nuna_kasxo, f, ensure_ascii=False, indent=2)
                         st.success(t('tab_kasxo.sukceso_forigita'))
                         st.rerun()
                 
                 st.divider()
-                with st.expander(t('tab_kasxo.dangxera_zono')): # Danĝera zono por forigi ĉiujn kaŝmemorigitajn datumojn.
+                with st.expander(t('tab_kasxo.dangxera_zono')):
                     if st.button(t('tab_kasxo.forigi_cxiom_btn')):
                         os.remove(vojo_json)
                         st.rerun()

@@ -26,7 +26,10 @@ class Tradukisto:
         self.traktilo = traktilo
         self.dosierujo_eliroj = "eliroj"
         self.cel_lingvo = cel_lingvo
-        self.kasxdosiero = os.path.join(self.dosierujo_eliroj, "progres-konservo.json")
+        
+        # Ni aldonas la cel-lingvon al la nomo de la kaŝdosiero por eviti miksadon
+        # se la uzanto tradukas la saman libron al pluraj malsamaj lingvoj.
+        self.kasxdosiero = os.path.join(self.dosierujo_eliroj, f"progres-konservo-{self.cel_lingvo}.json")
         self.vojo_glosaro = "postuloj.txt"
 
     def _sxargxi_glosaron(self) -> dict:
@@ -124,11 +127,11 @@ class Tradukisto:
         vortaro = self._sxargxi_glosaron()
         
         estas_google = "GoogleFree" in str(type(self.motoro))
-        logging.info(f"Komencante tradukon. Motoro: {type(self.motoro).__name__} | Platigi: {estas_google}")
+        logging.info(f"Komencante tradukon. Motoro: {type(self.motoro).__name__} | Platigi: {estas_google} | Cel-Lingvo: {self.cel_lingvo}")
         
         kapitoloj = [k for k in self.traktilo.elstiri_tekston() if elektitaj_kapitoloj is None or k.get_name() in elektitaj_kapitoloj] # Filtritaj kapitoloj por traduki.
         
-        # 1. Pré-calculamos o total global de blocos para a barra de progresso encher de forma realista
+        # 1. Antaŭkalkulas la totalan nombron de blokoj por realisma progreso-stango
         total_blokoj_entute = 0
         kapitolo_blokoj_mapo = {}
         for kapitolo in kapitoloj:
@@ -162,7 +165,7 @@ class Tradukisto:
                 # Ĝisdatigas la progreso-stangon (0.0 ĝis 1.0)
                 if progreso_callback and total_blokoj_entute > 0:
                     progreso_nuna = blokoj_faritaj_entute / float(total_blokoj_entute)
-                    # Trava de segurança para o Streamlit não quebrar caso passe de 1.0
+                    # Sekureca limo por Streamlit por ne superi 1.0
                     progreso_nuna = min(1.0, max(0.0, progreso_nuna))
                     progreso_callback(progreso_nuna, f"Tradukante: {nomo} ({indekso + 1}/{total_blokoj_nuna})")
 
@@ -173,8 +176,8 @@ class Tradukisto:
                 else:
                     start_bloko = time.time()
                     try:
-                        # Voko al API
-                        kruda_rezulto = self.motoro.traduki_blokon(bloko, genro, vortaro=vortaro, cel_lingvo=self.cel_lingvo)
+                        # Voko al API sen specifi 'cel_lingvo' ĉar la motoro jam scias ĝin!
+                        kruda_rezulto = self.motoro.traduki_blokon(bloko, genro, vortaro=vortaro)
                         fina_bloko_tempo = time.time() - start_bloko
                         
                         rezulto = kruda_rezulto.replace("```html", "").replace("```", "").strip()

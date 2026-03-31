@@ -78,16 +78,17 @@
       "elsuti_redaktitan_btn": "📥 ELŜUTI REDAKTITAN LIBRON"
     },
     "tab_kasxo": {
-      "titolo": "🧹 Administri Kaŝmemoron (JSON)",
-      "info_forigi": "Ĉi tie vi povas forigi tradukitajn blokojn.",
-      "ekzistas_blokoj": "Ekzistas **{}** konservitaj blokoj.",
-      "elektu_restarigi": "Elektu blokojn por restarigi (Reset):",
-      "forigi_elektitajn_btn": "🗑️ Forigi Elektitajn Blokojn",
-      "sukceso_forigita": "Forigita!",
-      "dangxera_zono": "⚠️ Danĝera Zono: Nuligi Ĉion",
-      "forigi_cxiom_btn": "💣 Forigi la tutan JSON-dosieron",
-      "neniu_traduko": "Neniu traduko ankoraŭ komenciĝis."
-    },
+          "titolo": "🧹 Administri Kaŝmemoron (JSON)",
+          "info_forigi": "Ĉi tie vi povas forigi tradukitajn blokojn.",
+          "elektu_dosieron": "Elektu la kaŝdosieron por administri:",
+          "ekzistas_blokoj": "Ekzistas **{}** konservitaj blokoj.",
+          "elektu_restarigi": "Elektu blokojn por restarigi (Reset):",
+          "forigi_elektitajn_btn": "🗑️ Forigi Elektitajn Blokojn",
+          "sukceso_forigita": "Forigita!",
+          "dangxera_zono": "⚠️ Danĝera Zono: Nuligi Ĉion",
+          "forigi_cxiom_btn": "💣 Forigi la tutan JSON-dosieron",
+          "neniu_traduko": "Neniu kaŝdosiero trovita en la dosierujo 'eliroj'."
+        },
     "tab_statuso": {
       "titolo": "🤖 Teknikaj Detaloj de Gemini",
       "tabelo_nomo": "Nomo",
@@ -178,16 +179,17 @@
       "elsuti_redaktitan_btn": "📥 BAIXAR LIVRO EDITADO"
     },
     "tab_kasxo": {
-      "titolo": "🧹 Gerenciar Cache (JSON)",
-      "info_forigi": "Aqui você pode excluir blocos traduzidos para forçar uma nova tradução.",
-      "ekzistas_blokoj": "Existem **{}** blocos salvos no cache.",
-      "elektu_restarigi": "Selecione blocos para redefinir (Reset):",
-      "forigi_elektitajn_btn": "🗑️ Excluir Blocos Selecionados",
-      "sukceso_forigita": "Excluído com sucesso!",
-      "dangxera_zono": "⚠️ Zona de Perigo: Apagar Tudo",
-      "forigi_cxiom_btn": "💣 Excluir todo o arquivo JSON",
-      "neniu_traduko": "Nenhuma tradução foi iniciada ainda."
-    },
+          "titolo": "🧹 Gerenciar Cache (JSON)",
+          "info_forigi": "Aqui você pode excluir blocos traduzidos para forçar uma nova tradução.",
+          "elektu_dosieron": "Selecione o arquivo de cache para gerenciar:",
+          "ekzistas_blokoj": "Existem **{}** blocos salvos no cache.",
+          "elektu_restarigi": "Selecione blocos para redefinir (Reset):",
+          "forigi_elektitajn_btn": "🗑️ Excluir Blocos Selecionados",
+          "sukceso_forigita": "Excluído com sucesso!",
+          "dangxera_zono": "⚠️ Zona de Perigo: Apagar Tudo",
+          "forigi_cxiom_btn": "💣 Excluir todo o arquivo JSON",
+          "neniu_traduko": "Nenhum arquivo de cache encontrado na pasta 'eliroj'."
+        },
     "tab_statuso": {
       "titolo": "🤖 Detalhes Técnicos do Gemini",
       "tabelo_nomo": "Nome",
@@ -278,16 +280,17 @@
       "elsuti_redaktitan_btn": "📥 DESCARGAR LIBRO EDITADO"
     },
     "tab_kasxo": {
-      "titolo": "🧹 Gestionar Caché (JSON)",
-      "info_forigi": "Acá podés eliminar bloques traducidos para forzar una re-traducción.",
-      "ekzistas_blokoj": "Hay **{}** bloques guardados en caché.",
-      "elektu_restarigi": "Seleccioná bloques para restablecer:",
-      "forigi_elektitajn_btn": "🗑️ Eliminar Bloques Seleccionados",
-      "sukceso_forigita": "¡Eliminado con éxito!",
-      "dangxera_zono": "⚠️ Zona de Peligro: Borrar Todo",
-      "forigi_cxiom_btn": "💣 Eliminar todo el archivo JSON",
-      "neniu_traduko": "Aún no ha comenzado ninguna traducción."
-    },
+          "titolo": "🧹 Gestionar Caché (JSON)",
+          "info_forigi": "Acá podés eliminar bloques traducidos para forzar uma re-traducción.",
+          "elektu_dosieron": "Seleccioná el archivo de caché para gestionar:",
+          "ekzistas_blokoj": "Hay **{}** bloques guardados en caché.",
+          "elektu_restarigi": "Seleccioná bloques para restablecer:",
+          "forigi_elektitajn_btn": "🗑️ Eliminar Bloques Seleccionados",
+          "sukceso_forigita": "¡Eliminado con éxito!",
+          "dangxera_zono": "⚠️ Zona de Peligro: Borrar Todo",
+          "forigi_cxiom_btn": "💣 Eliminar todo el archivo JSON",
+          "neniu_traduko": "No se encontraron archivos de caché en la carpeta 'eliroj'."
+        },
     "tab_statuso": {
       "titolo": "🤖 Detalles Técnicos de Gemini",
       "tabelo_nomo": "Nombre",
@@ -378,16 +381,17 @@
       "elsuti_redaktitan_btn": "📥 DOWNLOAD EDITED BOOK"
     },
     "tab_kasxo": {
-      "titolo": "🧹 Manage Cache (JSON)",
-      "info_forigi": "Here you can delete translated blocks to force a re-translation.",
-      "ekzistas_blokoj": "There are **{}** saved blocks in cache.",
-      "elektu_restarigi": "Select blocks to reset:",
-      "forigi_elektitajn_btn": "🗑️ Delete Selected Blocks",
-      "sukceso_forigita": "Deleted successfully!",
-      "dangxera_zono": "⚠️ Danger Zone: Delete All",
-      "forigi_cxiom_btn": "💣 Delete the entire JSON file",
-      "neniu_traduko": "No translation has started yet."
-    },
+          "titolo": "🧹 Manage Cache (JSON)",
+          "info_forigi": "Here you can delete translated blocks to force a re-translation.",
+          "elektu_dosieron": "Select the cache file to manage:",
+          "ekzistas_blokoj": "There are **{}** saved blocks in cache.",
+          "elektu_restarigi": "Select blocks to reset:",
+          "forigi_elektitajn_btn": "🗑️ Delete Selected Blocks",
+          "sukceso_forigita": "Deleted successfully!",
+          "dangxera_zono": "⚠️ Danger Zone: Delete All",
+          "forigi_cxiom_btn": "💣 Delete the entire JSON file",
+          "neniu_traduko": "No cache files found in 'eliroj' folder."
+        },
     "tab_statuso": {
       "titolo": "🤖 Gemini Technical Details",
       "tabelo_nomo": "Name",
