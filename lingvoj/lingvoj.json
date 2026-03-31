@@ -4,6 +4,8 @@
       "titolo": "📚 LibroTradukisto"
     },
     "flanka_menuo": {
+      "lingvo_titolo": "Lingvo de la interfaco:",
+      "elektu_cel_lingvon": "Elektu celita lingvo",
       "agordoj": "⚙️ Agordoj",
       "refresxi": "🔄 Ĝisdatigi Vidon (Refresh)",
       "elektu_motoron": "Elektu la traduk-motoron:",
@@ -13,6 +15,7 @@
     "eraroj": {
       "api_kontrolo": "Eraro ĉe API-kontrolo: {}",
       "api_mankas": "Enigu API-shlosilon!",
+      "cel_lingvo_mankas": "Bonvolu elekti cel-lingvon!",
       "kapitolo_mankas": "Bonvolu elekti almenaŭ unu kapitolon!",
       "alshutu_unue": "⬆️ Bonvolu alŝuti EPUB-dosieron por komenci."
     },
@@ -101,6 +104,8 @@
       "titolo": "📚 LibroTradukisto (Tradutor de Livros)"
     },
     "flanka_menuo": {
+      "elektu_cel_lingvon": "Selecione o idioma de destino:",
+      "lingvo_titolo": "Idioma da interface:",
       "agordoj": "⚙️ Configurações",
       "refresxi": "🔄 Atualizar Visão",
       "elektu_motoron": "Escolha o motor de tradução:",
@@ -109,6 +114,7 @@
     },
     "eraroj": {
       "api_kontrolo": "Erro na verificação da API: {}",
+      "cel_lingvo_mankas": "Por favor, selecione um idioma de destino!",
       "api_mankas": "Insira uma chave de API!",
       "kapitolo_mankas": "Por favor, selecione pelo menos um capítulo!",
       "alshutu_unue": "⬆️ Por favor, faça o upload de um arquivo EPUB para começar."
@@ -198,6 +204,8 @@
       "titolo": "📚 LibroTradukisto (Traductor de Libros)"
     },
     "flanka_menuo": {
+      "elektu_cel_lingvon": "Seleccioná el idioma de destino:",
+      "lingvo_titolo": "Idioma de la interfaz:",
       "agordoj": "⚙️ Ajustes",
       "refresxi": "🔄 Actualizar Vista",
       "elektu_motoron": "Elegí el motor de traducción:",
@@ -206,6 +214,7 @@
     },
     "eraroj": {
       "api_kontrolo": "Error al verificar la API: {}",
+      "cel_lingvo_mankas": "¡Por favor, seleccioná un idioma de destino!",
       "api_mankas": "¡Ingresá una clave API válida!",
       "kapitolo_mankas": "¡Por favor, seleccioná al menos un capítulo!",
       "alshutu_unue": "⬆️ Por favor, cargá un archivo EPUB para comenzar."
@@ -295,6 +304,8 @@
       "titolo": "📚 LibroTradukisto (Book Translator)"
     },
     "flanka_menuo": {
+      "elektu_cel_lingvon": "Select target language:",
+      "lingvo_titolo": "Interface language:",
       "agordoj": "⚙️ Settings",
       "refresxi": "🔄 Refresh View",
       "elektu_motoron": "Choose translation engine:",
@@ -303,6 +314,7 @@
     },
     "eraroj": {
       "api_kontrolo": "API check error: {}",
+      "cel_lingvo_mankas": "Please select a target language!",
       "api_mankas": "Please enter an API key!",
       "kapitolo_mankas": "Please select at least one chapter!",
       "alshutu_unue": "⬆️ Please upload an EPUB file to start."
@@ -392,6 +404,8 @@
       "titolo": "📚 LibroTradukisto (图书翻译器)"
     },
     "flanka_menuo": {
+      "elektu_cel_lingvon": "选择目标语言：",
+      "lingvo_titolo": "界面语言：",
       "agordoj": "⚙️ 设置",
       "refresxi": "🔄 刷新视图",
       "elektu_motoron": "选择翻译引擎：",
@@ -400,6 +414,7 @@
     },
     "eraroj": {
       "api_kontrolo": "API检查错误：{}",
+      "cel_lingvo_mankas": "请选择目标语言！",
       "api_mankas": "请输入API密钥！",
       "kapitolo_mankas": "请至少选择一个章节！",
       "alshutu_unue": "⬆️ 请上传EPUB文件以开始。"
@@ -489,6 +504,8 @@
       "titolo": "📚 LibroTradukisto (Traducteur de Livres)"
     },
     "flanka_menuo": {
+      "elektu_cel_lingvon": "Sélectionnez la langue cible :",
+      "lingvo_titolo": "Langue de l'interface :",
       "agordoj": "⚙️ Paramètres",
       "refresxi": "🔄 Actualiser l'affichage",
       "elektu_motoron": "Choisissez le moteur de traduction :",
@@ -497,6 +514,7 @@
     },
     "eraroj": {
       "api_kontrolo": "Erreur de vérification de l'API : {}",
+      "cel_lingvo_mankas": "Veuillez sélectionner une langue cible !",
       "api_mankas": "Veuillez entrer une clé API !",
       "kapitolo_mankas": "Veuillez sélectionner au moins un chapitre !",
       "alshutu_unue": "⬆️ Veuillez télécharger un fichier EPUB pour commencer."
@@ -586,6 +604,8 @@
       "titolo": "📚 LibroTradukisto (Buchübersetzer)"
     },
     "flanka_menuo": {
+      "elektu_cel_lingvon": "Zielsprache auswählen:",
+      "lingvo_titolo": "Oberflächensprache:",
       "agordoj": "⚙️ Einstellungen",
       "refresxi": "🔄 Ansicht aktualisieren",
       "elektu_motoron": "Übersetzungs-Engine wählen:",
@@ -594,6 +614,7 @@
     },
     "eraroj": {
       "api_kontrolo": "Fehler bei API-Überprüfung: {}",
+      "cel_lingvo_mankas": "Bitte wählen Sie eine Zielsprache aus!",
       "api_mankas": "Bitte geben Sie einen API-Schlüssel ein!",
       "kapitolo_mankas": "Bitte wählen Sie mindestens ein Kapitel aus!",
       "alshutu_unue": "⬆️ Bitte laden Sie eine EPUB-Datei hoch, um zu beginnen."
@@ -683,6 +704,8 @@
       "titolo": "📚 LibroTradukisto (Переводчик книг)"
     },
     "flanka_menuo": {
+      "elektu_cel_lingvon": "Выберите целевой язык:",
+      "lingvo_titolo": "Язык интерфейса:",
       "agordoj": "⚙️ Настройки",
       "refresxi": "🔄 Обновить вид",
       "elektu_motoron": "Выберите систему перевода:",
@@ -691,6 +714,7 @@
     },
     "eraroj": {
       "api_kontrolo": "Ошибка проверки API: {}",
+      "cel_lingvo_mankas": "Пожалуйста, выберите целевой язык!",
       "api_mankas": "Пожалуйста, введите API-ключ!",
       "kapitolo_mankas": "Пожалуйста, выберите хотя бы одну главу!",
       "alshutu_unue": "⬆️ Пожалуйста, загрузите файл EPUB для начала."

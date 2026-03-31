@@ -18,13 +18,14 @@ logging.basicConfig(
 )
 
 class Tradukisto:
-    def __init__(self, motoro, traktilo: EpubTraktilo):
+    def __init__(self, motoro, traktilo: EpubTraktilo, cel_lingvo: str = "eo"):
         """
         Iniciatas la tradukiston kun traduk-motoro kaj EPUB-traktilo.
         """
         self.motoro = motoro
         self.traktilo = traktilo
         self.dosierujo_eliroj = "eliroj"
+        self.cel_lingvo = cel_lingvo
         self.kasxdosiero = os.path.join(self.dosierujo_eliroj, "progres-konservo.json")
         self.vojo_glosaro = "postuloj.txt"
 
@@ -79,6 +80,7 @@ class Tradukisto:
             nombro = len(blokoj)
             entute_blokoj += nombro
             kapitolo_faritaj = sum(1 for j in range(nombro) if f"{nomo}_{j}" in kasxmemoro)
+            jam_faritaj += kapitolo_faritaj
 
             stato = "verda" if kapitolo_faritaj == nombro else "flava" if kapitolo_faritaj > 0 else "ruĝa"
             detaloj_pri_kapitoloj.append({"nomo": nomo, "blokoj": nombro, "faritaj": kapitolo_faritaj, "stato": stato})
@@ -115,7 +117,7 @@ class Tradukisto:
             kapitolo.set_content(enhavo.encode("utf-8"))
         return self.traktilo.libro
 
-    def traduki_libron(self, genro: str, elektitaj_kapitoloj: list = None, progreso_callback=None, live_view_callback=None):
+    def traduki_libron(self, genro: str, elektitaj_kapitoloj: list = None, progreso_callback=None, live_view_callback=None, cheki_interrompon=None):
         """Tradukas uzante QA, glosaron, logs kaj auxtomatan detekton de 'platigado'."""
         komenca_tempo = time.time()
         kasxmemoro = self._sxargxi_kasxmemoron()
@@ -124,33 +126,55 @@ class Tradukisto:
         estas_google = "GoogleFree" in str(type(self.motoro))
         logging.info(f"Komencante tradukon. Motoro: {type(self.motoro).__name__} | Platigi: {estas_google}")
         
-        kapitoloj = [k for k in self.traktilo.elstiri_tekston() if elektitaj_kapitoloj is None or k.get_name() in elektitaj_kapitoloj]
-        nombro_de_kapitoloj = len(kapitoloj)
+        kapitoloj = [k for k in self.traktilo.elstiri_tekston() if elektitaj_kapitoloj is None or k.get_name() in elektitaj_kapitoloj] # Filtritaj kapitoloj por traduki.
         
-        for i, kapitolo in enumerate(kapitoloj):
+        # 1. Pré-calculamos o total global de blocos para a barra de progresso encher de forma realista
+        total_blokoj_entute = 0
+        kapitolo_blokoj_mapo = {}
+        for kapitolo in kapitoloj:
             nomo = kapitolo.get_name()
             originala_html = kapitolo.get_content().decode("utf-8")
-            
-            # SE GOOGLE: platigi=True (forigas span-ojn) | SE GEMINI: platigi=False
             blokoj = self.traktilo.dividi_en_blokojn(originala_html, platigi=estas_google)
-            logging.info(f"Kapitolo {nomo}: {len(blokoj)} blokoj procesotaj.")
+            kapitolo_blokoj_mapo[nomo] = blokoj
+            total_blokoj_entute += len(blokoj)
+            
+        blokoj_faritaj_entute = 0 # Nombro de blokoj jam tradukitaj.
+        
+        for i, kapitolo in enumerate(kapitoloj):
+            if cheki_interrompon and cheki_interrompon():
+                logging.info("Tradukado interrompita de la uzanto antaŭ la kapitolo.")
+                break
+
+            nomo = kapitolo.get_name()
+            blokoj = kapitolo_blokoj_mapo[nomo]
+            total_blokoj_nuna = len(blokoj)
+            logging.info(f"Kapitolo {nomo}: {total_blokoj_nuna} blokoj procesotaj.")
             tradukita_html_listo = []
 
             for indekso, bloko in enumerate(blokoj):
+                if cheki_interrompon and cheki_interrompon():
+                    logging.info(f"Tradukado interrompita de la uzanto en la bloko {indekso}.")
+                    return self.traktilo.libro 
+
                 shlosilo = f"{nomo}_{indekso}"
-                
+                blokoj_faritaj_entute += 1
+
+                # Ĝisdatigas la progreso-stangon (0.0 ĝis 1.0)
+                if progreso_callback and total_blokoj_entute > 0:
+                    progreso_nuna = blokoj_faritaj_entute / float(total_blokoj_entute)
+                    # Trava de segurança para o Streamlit não quebrar caso passe de 1.0
+                    progreso_nuna = min(1.0, max(0.0, progreso_nuna))
+                    progreso_callback(progreso_nuna, f"Tradukante: {nomo} ({indekso + 1}/{total_blokoj_nuna})")
+
                 if shlosilo in kasxmemoro:
                     rezulto = kasxmemoro[shlosilo]
                     fonto = " [KASXO]"
                     logging.info(f"  [{shlosilo}] Trovita en kasxo.")
                 else:
                     start_bloko = time.time()
-                    if progreso_callback:
-                        progreso_callback(i / nombro_de_kapitoloj, f"Tradukante: {nomo} ({indekso + 1}/{len(blokoj)})")
-
                     try:
                         # Voko al API
-                        kruda_rezulto = self.motoro.traduki_blokon(bloko, genro, vortaro=vortaro)
+                        kruda_rezulto = self.motoro.traduki_blokon(bloko, genro, vortaro=vortaro, cel_lingvo=self.cel_lingvo)
                         fina_bloko_tempo = time.time() - start_bloko
                         
                         rezulto = kruda_rezulto.replace("```html", "").replace("```", "").strip()
@@ -165,7 +189,7 @@ class Tradukisto:
                         logging.info(f"  [{shlosilo}] API Sukcesa: {fina_bloko_tempo:.2f}s | Grandeco In: {len(bloko)} / Out: {len(rezulto)}")
                         
                     except Exception as e:
-                        logging.error(f"  [{shlosilo}] KRITIKA ERARO: {e}")
+                        logging.error(f"  [{shlosilo}] KRITIKA ERARO: {e}") # Rezerva solvo por ne perdi la libron.
                         rezulto = bloko # Fallback por ne perdi la libron
 
                     kasxmemoro[shlosilo] = rezulto
@@ -191,7 +215,7 @@ class Tradukisto:
 
     def konservi(self, libro, originala_nomo):
         if not os.path.exists(self.dosierujo_eliroj): os.makedirs(self.dosierujo_eliroj)
-        vojo = os.path.join(self.dosierujo_eliroj, f"esperanto_{os.path.basename(originala_nomo)}")
+        vojo = os.path.join(self.dosierujo_eliroj, f"{self.cel_lingvo}_{os.path.basename(originala_nomo)}")
         epub.write_epub(vojo, libro)
         logging.info(f"Libro konservita: {vojo}")
         return vojo

@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class GeminiKliento:
-    def __init__(self, api_shlosilo: str = None, modelo_nomo: str = None):
+    def __init__(self, api_shlosilo: str = None, modelo_nomo: str = None, cel_lingvo: str = "eo"):
         """
         Iniciatas la Gemini-klienton kun kapablo monitori modelan sanon.
         """
@@ -14,17 +14,30 @@ class GeminiKliento:
         if not self.shlosilo:
             raise ValueError("Eraro: API-shlosilo ne trovita!")
             
-        self.client = genai.Client(api_key=self.shlosilo)
+        self.client = genai.Client(api_key=self.shlosilo) # Gemini API-kliento.
         self.modelo_nomo = modelo_nomo if modelo_nomo else "gemini-2.0-flash"
+        self.cel_lingvo = cel_lingvo
         
         # Vortaro por konservi la staton de la modeloj dum la seanco
         self.sano_de_modeloj = {}
+        
+        # Mapado de lingvo-kodoj al plenaj nomoj por la instrukcio
+        self.lingvo_nomoj = {
+            "eo": "Esperanto",
+            "pt": "Português",
+            "en": "English",
+            "es": "Español",
+            "zh": "中文",
+            "fr": "Français",
+            "de": "Deutsch",
+            "ru": "Русский"
+        }
 
     def detaligi_modelojn(self) -> list:
         """
         Liveras liston de vortaroj kun teknikaj detaloj pri cxiuj disponeblaj modeloj.
         """
-        listo_de_detaloj = []
+        listo_de_detaloj = [] # Listo por konservi modelajn detalojn.
         try:
             for modelo in self.client.models.list():
                 nomo = getattr(modelo, 'name', '').replace("models/", "")
@@ -51,7 +64,7 @@ class GeminiKliento:
             return []
 
     def listi_modelojn(self) -> list:
-        """Liveras nur la nomojn de la modeloj por la selekt-skatolo."""
+        """Liveras nur la nomojn de la modeloj por la selekt-skatolo.""" # Akiras liston de modelaj nomoj.
         modeloj = self.detaligi_modelojn()
         return [m["nomo"] for m in modeloj]
 
@@ -59,16 +72,20 @@ class GeminiKliento:
         """
         Konstruas la sisteman instrukcion laux la elektita genro kaj injektas la glosaron.
         """
-        instruo = (
-            "VI ESTAS PROFESIA LITERATURA TRADUKISTO AL ESPERANTO, SPECIALISTO PRI HISTORIO.\n"
-            "VIA CELO: Traduki la tekston al eleganta, akademia kaj flua Esperanto.\n"
+        target_lang_name = self.lingvo_nomoj.get(self.cel_lingvo, "Esperanto")
+        
+        instruo_base = ( # Baza instrukcio por la tradukisto.
+            f"VI ESTAS PROFESIA TRADUKISTO AL {target_lang_name.upper()}\n"
+            f"VIA CELO: Traduki la tekston al eleganta, akademia, literara kaj flua {target_lang_name}.\n"
             "STILO-REGULOJ:\n"
-            "- Uzu klasikan stilon (Zamenhofan).\n"
             "- Konservu HTML-etikedojn netusxitaj. Ne traduku ene de < >.\n"
             "- Liveru NUR la tradukitu HTML-kodon, sen klarigoj.\n"
         )
         
-        stiloj = {
+        if self.cel_lingvo == "eo":
+            instruo_base = instruo_base.replace("STILO-REGULOJ:\n", "STILO-REGULOJ:\n- Uzu klasikan stilon (Zamenhofan).\n")
+
+        stiloj = { # Vortaro de stiloj por malsamaj ĝenroj.
             "teologio": (
                 "STILO: Biblia, solena kaj ekumena. REGLOJ: Uzu klasikan vortprovizon. "
                 "1. Por REFORMITA: Uzu biblian simplecon. 2. Por KATOLIKA: Uzu latinidajn terminojn. "
@@ -82,12 +99,12 @@ class GeminiKliento:
             "sciencfikcio": "STILO: Moderna, teknologia kaj futurisma. REGLOJ: Uzu la afiksojn de Esperanto por neologismoj.",
             "biografio": "STILO: Rakonta, intimeca kaj historia. REGLOJ: Fokusigu la psikologiajn nuancojn.",
             "poezio": "STILO: Lirika, ritma kaj belsona. REGLOJ: Prioritatu eŭfonion; permesu eliziojn.",
-            "generala": "STILO: Klara, ekvilibra kaj moderna. REGLOJ: Sekvu la 'Baza Literatura Standardo'."
+            "generala": f"STILO: Klara, ekvilibra kaj moderna. REGLOJ: Sekvu la 'Baza Literatura Standardo' por {target_lang_name}."
         }
 
-        plena_instruo = f"{instruo}\n{stiloj.get(genro.lower(), stiloj['generala'])}"
+        plena_instruo = f"{instruo_base}\n{stiloj.get(genro.lower(), stiloj['generala'])}"
 
-        # Injekto de la Glosaro (Glossary Injection)
+        # Injekto de la Glosaro
         if vortaro:
             glosara_teksto = "\n\nGRAVA: Konservu cxi tiun terminologion (Glosaro):\n"
             for orig, trad in vortaro.items():
@@ -96,10 +113,10 @@ class GeminiKliento:
 
         return plena_instruo
 
-    def traduki_blokon(self, teksto: str, genro: str, vortaro: dict = None, retestoj: int = 5) -> str:
+    def traduki_blokon(self, teksto: str, genro: str, vortaro: dict = None, retestoj: int = 5, **kwargs) -> str:
         """Tradukas blokon de teksto uzante la glosaron se disponebla."""
         instruo = self.prepari_instruon(genro, vortaro)
-        plena_prompto = f"{instruo}\n\nJEN LA TEKSTO POR TRADUKI:\n{teksto}"
+        plena_prompto = f"{instruo}\n\nJEN LA TEKSTO POR TRADUKI:\n{teksto}" # La plena instrukcio por la modelo.
         
         for provo in range(retestoj):
             try:
@@ -111,7 +128,7 @@ class GeminiKliento:
                 if not response or not response.text:
                     continue
                 
-                self.sano_de_modeloj[self.modelo_nomo] = "Sana"
+                self.sano_de_modeloj[self.modelo_nomo] = "Sana" # Ĝisdatigas la sanstaton de la modelo.
                 return response.text
             
             except Exception as e:

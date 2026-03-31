@@ -12,7 +12,7 @@ class EpubTraktilo:
         self.kapitoloj = []
         self._stiri_kapitolojn()
 
-    def _stiri_kapitolojn(self):
+    def _stiri_kapitolojn(self): # Filtras nur tekstajn dokumentojn (HTML/XHTML) el la EPUB.
         """Filtras nur tekstajn dokumentojn (HTML/XHTML) el la EPUB."""
         for item in self.libro.get_items():
             if item.get_type() == ebooklib.ITEM_DOCUMENT:
@@ -28,18 +28,18 @@ class EpubTraktilo:
         Forigas span-ojn kaj aliajn malpurajxojn kiuj disigas vortojn.
         Tio evitas erarojn kiel 'O-HEPATO' (Oliver).
         """
-        soup = BeautifulSoup(html_enhavo, 'html.parser')
+        soup = BeautifulSoup(html_enhavo, 'html.parser') # Kreas BeautifulSoup-objekton.
         
         # 1. Forigi cxiujn span-ojn konservante la tekston (Unwrap)
         # Tio rekunigas vortojn disigitajn de stilo.
         for span in soup.find_all("span"):
             span.unwrap()
             
-        # 2. Forigi cxiujn font-etikedojn
+        # 2. Forigi cxiujn font-etikedojn.
         for f in soup.find_all("font"):
             f.unwrap()
 
-        # 3. Forigi malplenajn etikedojn (krom br, img)
+        # 3. Forigi malplenajn etikedojn (krom br, img).
         for el in soup.find_all():
             if len(el.get_text(strip=True)) == 0 and el.name not in ['br', 'img', 'hr']:
                 el.decompose()
@@ -56,9 +56,9 @@ class EpubTraktilo:
         if platigi:
             labor_html = self.purigi_kaj_platigi_html(html_enhavo)
             
-        soup = BeautifulSoup(labor_html, 'html.parser')
+        soup = BeautifulSoup(labor_html, 'html.parser') # Kreas BeautifulSoup-objekton el la labor-HTML.
         
-        # Serĉas strukturajn elementojn
+        # Serĉas strukturajn elementojn.
         elementoj = soup.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote', 'dt', 'dd'])
         
         blokoj = []
@@ -66,7 +66,7 @@ class EpubTraktilo:
         
         for el in elementoj:
             el_html = str(el)
-            
+            # Se la elemento mem estas tro granda, ni almenaux metas gxin sola en blokon.
             # Se la elemento mem estas tro granda, ni almenaux metas gxin sola en blokon
             if len(el_html) > max_karakteroj and not nuna_bloko:
                 blokoj.append(el_html)
@@ -84,5 +84,5 @@ class EpubTraktilo:
         return blokoj
 
     def gxisdatigi_kapitolon(self, kapitolo_item, nova_enhavo_html):
-        """Anstatauxigas la enhavon de la kapitolo per la tradukita HTML."""
+        """Anstataŭigas la enhavon de la kapitolo per la tradukita HTML."""
         kapitolo_item.set_content(nova_enhavo_html.encode('utf-8'))

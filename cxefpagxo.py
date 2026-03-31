@@ -17,6 +17,7 @@ FALLBACK_LINGVOJ = {
         "cxefa": { "titolo": "📚 LibroTradukisto" },
         "flanka_menuo": {
             "lingvo_titolo": "Lingvo / Language / Idioma:",
+            "elektu_cel_lingvon": "Elektu la cel-lingvon:",
             "agordoj": "⚙️ Agordoj", "refresxi": "🔄 Ĝisdatigi Vidon (Refresh)",
             "elektu_motoron": "Elektu la traduk-motoron:", "modelo": "Modelo:", "genro": "Genro (Stilo):"
         },
@@ -81,12 +82,14 @@ def sxargxi_lingvojn():
 LINGVOJ_DATA = sxargxi_lingvojn()
 
 # 1. Agordoj kaj Inicialigo
-load_dotenv()
+# Ŝarĝas medio-variablojn el .env dosiero.
 st.set_page_config(page_title="LibroTradukisto", page_icon="📚", layout="wide")
 
 # Inicialigo de la seanca stato
 if 'nuna_lingvo' not in st.session_state:
     st.session_state.nuna_lingvo = "eo"
+if 'cel_lingvo' not in st.session_state:
+    st.session_state.cel_lingvo = "eo"
 if 'analizo_farita' not in st.session_state:
     st.session_state.analizo_farita = False
 if 'statistikoj' not in st.session_state:
@@ -101,7 +104,7 @@ if 'lasta_dosiero_nomo' not in st.session_state:
     st.session_state.lasta_dosiero_nomo = None
 
 def t(sxlosilo_pado, *args):
-    """Funciio por serĉi la tekston en la nuna lingvo."""
+    """Funkcio por serĉi la tekston en la nuna lingvo."""
     vojoj = sxlosilo_pado.split(".")
     aktuala = LINGVOJ_DATA.get(st.session_state.nuna_lingvo, FALLBACK_LINGVOJ["eo"])
     for v in vojoj:
@@ -119,6 +122,7 @@ def t(sxlosilo_pado, *args):
     return aktuala
 
 # CSS
+# Stilo por la antaŭrigardo de EPUB kaj aliaj elementoj.
 EREADER_STYLE = """
 <style>
     .epub-view { background-color: #fdf6e3; color: #5b4636; padding: 40px; border-radius: 10px; border: 1px solid #d3af8e; font-family: 'Georgia', serif; line-height: 1.6; height: 400px; overflow-y: auto; box-shadow: inset 0 0 10px rgba(0,0,0,0.1); }
@@ -136,9 +140,10 @@ st.title(t('cxefa.titolo'))
 
 # --- SIDEBAR: AGORDOJ ---
 with st.sidebar:
-    st.write(f"**🌐 {t('Lingvoj / Languages / Idiomas')}**")
+    st.write(f"**🌐 {t('flanka_menuo.lingvo_titolo')}**")
 
     import base64
+    # Funkcio por akiri Base64-kodigon de bildo.
     def get_image_base64(path):
         if os.path.exists(path):
             with open(path, "rb") as f:
@@ -147,6 +152,7 @@ with st.sidebar:
         return None
 
     lingv_agordoj = [
+        # Agordoj por la lingvoj de la interfaco.
         {"id": "eo", "nomo": "Esperanto", "dosiero": "lingvoj/flagoj/esperanta_flago.png"},
         {"id": "pt", "nomo": "Português", "dosiero": "lingvoj/flagoj/brazila_flago.png"},
         {"id": "en", "nomo": "English", "dosiero": "lingvoj/flagoj/usona_flago.png"},
@@ -158,6 +164,7 @@ with st.sidebar:
     ]
 
     query_params = st.query_params
+    # Kontrolas ĉu lingvo estas specifita en la URL-parametroj.
     if "lang" in query_params:
         nova_lingvo = query_params["lang"]
         if nova_lingvo != st.session_state.nuna_lingvo:
@@ -166,6 +173,7 @@ with st.sidebar:
 
 
     cols = st.columns(4) 
+    # Kreas butonojn por lingvo-elekto kun flagoj.
     for idx, l in enumerate(lingv_agordoj):
         with cols[idx % 4]:
             b64 = get_image_base64(l["dosiero"])
@@ -193,12 +201,32 @@ with st.sidebar:
         
     st.divider()
     
-    motoro_elekto = st.radio(
-        t('flanka_menuo.elektu_motoron'),
+    # Elektilo de cel-lingvo
+    cel_lingvo_opcioj = {
+        "eo": "Esperanto",
+        "pt": "Português",
+        "en": "English",
+        "es": "Español",
+        "zh": "中文",
+        "fr": "Français",
+        "de": "Deutsch",
+        "ru": "Русский"
+    }
+    
+    default_cel_lingvo_idx = list(cel_lingvo_opcioj.keys()).index(st.session_state.cel_lingvo)
+
+    selected_cel_lingvo_name = st.selectbox(
+        t('flanka_menuo.elektu_cel_lingvon'),
+        list(cel_lingvo_opcioj.values()),
+        index=default_cel_lingvo_idx
+    )
+    st.session_state.cel_lingvo = [k for k, v in cel_lingvo_opcioj.items() if v == selected_cel_lingvo_name][0]
+    motoro_elekto = st.radio( # Elekto de la traduk-motoro.
+        t('flanka_menuo.elektu_motoron'), 
         ["Gemini AI (Oficiala)", "Google Free (Senpaga/GTX)"]
     )
     
-    api_key = ""
+    api_key = "" # API-ŝlosilo
     modelo_nomo = "gemini-2.0-flash"
     
     if "Gemini" in motoro_elekto:
@@ -207,9 +235,9 @@ with st.sidebar:
         
         if api_key:
             try:
-                if not st.session_state.disponeblaj_modeloj_detalaj:
-                    with st.spinner(t('tab_tradukado.analizante_spin')):
-                        temp_kliento = GeminiKliento(api_shlosilo=api_key)
+                if not st.session_state.disponeblaj_modeloj_detalaj: # Pasigas la cel-lingvon.
+                    with st.spinner(t('tab_tradukado.analizante_spin')): 
+                        temp_kliento = GeminiKliento(api_shlosilo=api_key, cel_lingvo=st.session_state.cel_lingvo)
                         st.session_state.disponeblaj_modeloj_detalaj = temp_kliento.detaligi_modelojn()
                 
                 modeloj_listo = [m["nomo"] for m in st.session_state.disponeblaj_modeloj_detalaj]
@@ -222,11 +250,11 @@ with st.sidebar:
             except Exception as e:
                 st.error(t('eraroj.api_kontrolo', e))
     
-    genro = st.selectbox(t('flanka_menuo.genro'), 
+    genro = st.selectbox(t('flanka_menuo.genro'), # Elekto de la literatura ĝenro/stilo.
                          ["Generala", "Teologio", "Akademia", "Fantasto", "Sciencfikcio", "Biografio", "Poezio"])
 
 def inicialigi_tradukiston(dosiero_nomo, dosiero_obj=None):
-    temp_path = f"temp_{dosiero_nomo}"
+    temp_path = f"temp_{dosiero_nomo}" # Kreas tempan dosieron por la alŝutita EPUB.
     if dosiero_obj is not None:
         with open(temp_path, "wb") as f:
             f.write(dosiero_obj.getbuffer())
@@ -235,15 +263,15 @@ def inicialigi_tradukiston(dosiero_nomo, dosiero_obj=None):
         return None
 
     if "Gemini" in motoro_elekto:
-        kliento = GeminiKliento(api_shlosilo=api_key, modelo_nomo=modelo_nomo)
+        kliento = GeminiKliento(api_shlosilo=api_key, modelo_nomo=modelo_nomo, cel_lingvo=st.session_state.cel_lingvo)
     else:
-        kliento = GoogleFreeKliento()
+        kliento = GoogleFreeKliento(cel_lingvo=st.session_state.cel_lingvo)
     
     traktilo = EpubTraktilo(temp_path)
-    return Tradukisto(kliento, traktilo)
+    return Tradukisto(kliento, traktilo, st.session_state.cel_lingvo)
 
 alsutita_dosiero = st.file_uploader(t('tab_tradukado.alshutu'), type=["epub"], key="main_upl")
-
+# Kontrolas ĉu dosiero estas alŝutita aŭ ĉu lasta dosiero-nomo ekzistas en la sesio.
 if alsutita_dosiero:
     st.session_state.lasta_dosiero_nomo = alsutita_dosiero.name
     motoro = inicialigi_tradukiston(alsutita_dosiero.name, alsutita_dosiero)
@@ -253,7 +281,7 @@ else:
     motoro = None
 
 if motoro:
-    tab_cxefa, tab_redaktilo, tab_kasxo, tab_statuso = st.tabs([
+    tab_cxefa, tab_redaktilo, tab_kasxo, tab_statuso = st.tabs([ # Kreas la ĉefajn langetojn de la interfaco.
         t('taboj.tradukado'), 
         t('taboj.redaktilo'), 
         t('taboj.kasxo'), 
@@ -261,7 +289,7 @@ if motoro:
     ])
 
     # --- TAB 1: TRADUKADO ---
-    with tab_cxefa:
+    with tab_cxefa: # Butono por analizi la strukturon de la libro.
         if st.button(t('tab_tradukado.analizi_btn')):
             with st.spinner(t('tab_tradukado.analizante_spin')):
                 stats = motoro.estimi_laboron()
@@ -271,10 +299,10 @@ if motoro:
                 st.session_state.analizo_farita = True
 
         if st.session_state.analizo_farita and st.session_state.statistikoj:
-            stats = st.session_state.statistikoj
+            stats = st.session_state.statistikoj # Montras statistikojn se analizo estas farita.
             st.divider()
             st.subheader(t('tab_tradukado.stato_titolo'))
-            c1, c2, c3 = st.columns(3)
+            c1, c2, c3 = st.columns(3) # Montras la statuson de la kapitoloj per koloraj insignoj.
             with c1:
                 for v in [d['nomo'] for d in stats['detaloj'] if d['stato'] == 'verda']:
                     st.markdown(f"<span class='badge verda'>{v}</span>", unsafe_allow_html=True)
@@ -291,7 +319,7 @@ if motoro:
             elektitaj = st.multiselect(t('tab_tradukado.elektu_kapitolojn'), chiuj_nomoj, default=defauxlta_selekto)
 
             col_m1, col_m2, col_m3 = st.columns(3)
-            restantaj = stats['entute_blokoj'] - stats['jam_faritaj']
+            restantaj = stats['entute_blokoj'] - stats['jam_faritaj'] # Montras metrikon de mankantaj blokoj.
             col_m1.metric(t('tab_tradukado.metriko_mankantaj'), restantaj)
             col_m2.metric(t('tab_tradukado.metriko_tempo'), t('tab_tradukado.metriko_tempo_unuo', stats['estimata_tempo_min']))
             col_m3.metric(t('tab_tradukado.metriko_loka'), t('tab_tradukado.metriko_blokoj_unuo', stats['jam_faritaj']))
@@ -299,14 +327,14 @@ if motoro:
             st.divider()
             st.subheader(t('tab_tradukado.antaurigardo_titolo'))
             for detalo in stats['detaloj']:
-                ikono = "✅" if detalo['stato'] == 'verda' else "🟡" if detalo['stato'] == 'flava' else "🔴"
+                ikono = "✅" if detalo['stato'] == 'verda' else "🟡" if detalo['stato'] == 'flava' else "🔴" # Montras antaŭrigardon de la originala enhavo de ĉiu kapitolo.
                 with st.expander(f"{ikono} {detalo['nomo']} ({detalo['blokoj']} blokoj)"):
                     html_orig = st.session_state.originala_enhavo_cache.get(detalo['nomo'], t('tab_tradukado.enhavo_netrovita'))
                     st.markdown(f'<div class="epub-view">{html_orig}</div>', unsafe_allow_html=True)
 
             st.divider()
             st.subheader(t('tab_tradukado.viva_monitoro'))
-            col_orig, col_trad = st.columns(2)
+            col_orig, col_trad = st.columns(2) # Funkcio por ĝisdatigi la vivan monitoron dum tradukado.
             box_orig, box_trad = col_orig.empty(), col_trad.empty()
 
             def viva_monitoro(nomo, trad):
@@ -314,7 +342,7 @@ if motoro:
                 box_trad.markdown(f'<div class="epub-view" style="background-color: #eef7ee;">{trad}</div>', unsafe_allow_html=True)
 
             st.divider()
-            st.subheader(t('tab_tradukado.agoj_titolo'))
+            st.subheader(t('tab_tradukado.agoj_titolo')) # Butono por generi EPUB el kaŝmemoro.
             cb1, cb2 = st.columns(2)
             with cb1:
                 if st.button(t('tab_tradukado.generi_el_kasxo_btn')):
@@ -325,7 +353,7 @@ if motoro:
             with cb2:
                 if st.button(t('tab_tradukado.daurigi_btn')):
                     if "Gemini" in motoro_elekto and not api_key:
-                        st.error(t('eraroj.api_mankas'))
+                        st.error(t('eraroj.api_mankas')) # Removed cel_lingvo_mankas check here, as it's always set to a default.
                     elif not elektitaj:
                         st.error(t('eraroj.kapitolo_mankas'))
                     else:
@@ -337,15 +365,15 @@ if motoro:
                         st.balloons()
 
             if st.session_state.traduko_preta:
-                st.divider()
+                st.divider() # Butono por elŝuti la finan libron.
                 with open(st.session_state.traduko_preta, "rb") as f:
-                    st.download_button(t('tab_tradukado.elsuti_finan_btn'), f, f"eo_{st.session_state.lasta_dosiero_nomo}", "application/epub+zip")
+                    st.download_button(t('tab_tradukado.elsuti_finan_btn'), f, f"{st.session_state.cel_lingvo}_{st.session_state.lasta_dosiero_nomo}", "application/epub+zip")
 
     # --- TAB 2: MANA REDAKTADO ---
     with tab_redaktilo:
         st.header(t('tab_redaktilo.titolo'))
         
-        motoro_red = motoro
+        motoro_red = motoro # Akiras la traduk-motoron por redaktado.
         kasxmemoro = motoro_red._sxargxi_kasxmemoron()
         
         if not st.session_state.analizo_farita or st.session_state.statistikoj is None:
@@ -356,7 +384,7 @@ if motoro:
         stats = st.session_state.statistikoj
 
         st.subheader(t('tab_redaktilo.vido_makro'))
-        col_v, col_f, col_r = st.columns(3)
+        col_v, col_f, col_r = st.columns(3) # Kolumnoj por montri statuson de kapitoloj.
         
         with col_v:
             st.markdown(t('tab_redaktilo.finitaj'))
@@ -389,10 +417,10 @@ if motoro:
 
         st.divider()
 
-        if not st.session_state.originala_enhavo_cache:
+        if not st.session_state.originala_enhavo_cache: # Ŝarĝas originalan enhavon en kaŝmemoron se ne jam farite.
             st.session_state.originala_enhavo_cache = {k.get_name(): k.get_content().decode("utf-8") for k in motoro_red.traktilo.elstiri_tekston()}
         
-        kapitoloj_listo = list(st.session_state.originala_enhavo_cache.keys())
+        kapitoloj_listo = list(st.session_state.originala_enhavo_cache.keys()) # Listo de kapitoloj por elekto.
         elektita_kap = st.selectbox(t('tab_redaktilo.elektu_por_redakti'), kapitoloj_listo)
 
         if elektita_kap:
@@ -401,7 +429,7 @@ if motoro:
             
             st.write(t('tab_redaktilo.rapida_supervido', elektita_kap))
             
-            progreso_html = ""
+            progreso_html = "" # HTML por montri progreson de blokoj.
             faritaj = 0
             for i in range(len(blokoj_orig)):
                 shl = f"{elektita_kap}_{i}"
@@ -413,10 +441,10 @@ if motoro:
             
             st.markdown(f"<div style='background:#f0f2f6; padding:15px; border-radius:10px; margin-bottom:20px;'>{progreso_html}</div>", unsafe_allow_html=True)
             
-            percent = int(faritaj/len(blokoj_orig)*100) if len(blokoj_orig) > 0 else 0
+            percent = int(faritaj/len(blokoj_orig)*100) if len(blokoj_orig) > 0 else 0 # Kalkulas procenton de progreso.
             st.write(t('tab_redaktilo.progreson', faritaj, len(blokoj_orig), percent))
             
-            filtro = st.radio(t('tab_redaktilo.filtro_titolo'), [t('tab_redaktilo.filtro_cxiuj'), t('tab_redaktilo.filtro_netradukitaj'), t('tab_redaktilo.filtro_tradukitaj')], horizontal=True)
+            filtro = st.radio(t('tab_redaktilo.filtro_titolo'), [t('tab_redaktilo.filtro_cxiuj'), t('tab_redaktilo.filtro_netradukitaj'), t('tab_redaktilo.filtro_tradukitaj')], horizontal=True) # Filtrilo por blokoj.
             st.divider()
 
             for idx, bloko_raw in enumerate(blokoj_orig):
@@ -426,7 +454,7 @@ if motoro:
                 if filtro == t('tab_redaktilo.filtro_netradukitaj') and estas_tradukita: continue
                 if filtro == t('tab_redaktilo.filtro_tradukitaj') and not estas_tradukita: continue
 
-                nuna_enhavo = kasxmemoro.get(shlosilo, bloko_raw)
+                nuna_enhavo = kasxmemoro.get(shlosilo, bloko_raw) # Akiras la aktualan enhavon de la bloko.
                 ikono_stato = "✅" if estas_tradukita else "⚪"
                 stato_teksto = t('tab_redaktilo.tradukita') if estas_tradukita else t('tab_redaktilo.originala')
                 
@@ -452,7 +480,7 @@ if motoro:
                                 st.rerun()
 
                     with col_prev:
-                        st.caption(t('tab_redaktilo.viva_antaurigardo'))
+                        st.caption(t('tab_redaktilo.viva_antaurigardo')) # Montras vivan antaŭrigardon de la redaktita bloko.
                         st.markdown(f'<div class="preview-box">{nuna_enhavo}</div>', unsafe_allow_html=True)
 
             st.divider()
@@ -466,7 +494,7 @@ if motoro:
                         st.download_button(
                             t('tab_redaktilo.elsuti_redaktitan_btn'), 
                             f, 
-                            f"redaktita_{st.session_state.lasta_dosiero_nomo}", 
+                            f"redaktita_{st.session_state.cel_lingvo}_{st.session_state.lasta_dosiero_nomo}", 
                             "application/epub+zip", 
                             key="download_red_btn"
                         )
@@ -475,7 +503,7 @@ if motoro:
     with tab_kasxo:
         st.header(t('tab_kasxo.titolo'))
         st.info(t('tab_kasxo.info_forigi'))
-        
+        # Vojo al la JSON-dosiero de kaŝmemoro.
         vojo_json = os.path.join("eliroj", "progres-konservo.json")
         if os.path.exists(vojo_json):
             with open(vojo_json, "r", encoding="utf-8") as f:
@@ -483,7 +511,7 @@ if motoro:
                 except: nuna_kasxo = {}
             
             if nuna_kasxo:
-                st.write(t('tab_kasxo.ekzistas_blokoj', len(nuna_kasxo)))
+                st.write(t('tab_kasxo.ekzistas_blokoj', len(nuna_kasxo))) # Montras la nombron de konservitaj blokoj.
                 blokoj_por_forigi = st.multiselect(t('tab_kasxo.elektu_restarigi'), sorted(list(nuna_kasxo.keys())))
                 
                 if st.button(t('tab_kasxo.forigi_elektitajn_btn'), type="primary"):
@@ -495,7 +523,7 @@ if motoro:
                         st.rerun()
                 
                 st.divider()
-                with st.expander(t('tab_kasxo.dangxera_zono')):
+                with st.expander(t('tab_kasxo.dangxera_zono')): # Danĝera zono por forigi ĉiujn kaŝmemorigitajn datumojn.
                     if st.button(t('tab_kasxo.forigi_cxiom_btn')):
                         os.remove(vojo_json)
                         st.rerun()
@@ -505,7 +533,7 @@ if motoro:
     # --- TAB 4: STATUSO ---
     with tab_statuso:
         st.subheader(t('tab_statuso.titolo'))
-        if api_key:
+        if api_key: # Kontrolas ĉu API-ŝlosilo estas provizita.
             try:
                 kliento_status = GeminiKliento(api_shlosilo=api_key)
                 detaloj = kliento_status.detaligi_modelojn()
@@ -520,6 +548,6 @@ if motoro:
             except Exception as e:
                 st.error(t('eraroj.api_kontrolo', e))
         else:
-            st.info(t('tab_statuso.info_mankas_api'))
+            st.info(t('tab_statuso.info_mankas_api')) # Informas se API-ŝlosilo mankas.
 else:
     st.info(t('eraroj.alshutu_unue'))
