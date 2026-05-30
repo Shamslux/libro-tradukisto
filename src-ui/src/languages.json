@@ -1,0 +1,34 @@
+{
+  "pt-BR": {
+    "name": "Português (Brasil)",
+    "flag": "brazila_flago.png"
+  },
+  "eo": {
+    "name": "Esperanto",
+    "flag": "esperanta_flago.png"
+  },
+  "en": {
+    "name": "English (US)",
+    "flag": "usona_flago.png"
+  },
+  "es": {
+    "name": "Español",
+    "flag": "argentina_flago.png"
+  },
+  "zh-CN": {
+    "name": "简体中文 (Simplified)",
+    "flag": "cxina_flago.png"
+  },
+  "fr": {
+    "name": "Français",
+    "flag": "franca_flago.png"
+  },
+  "de": {
+    "name": "Deutsch",
+    "flag": "germana_flago.png"
+  },
+  "ru": {
+    "name": "Русский",
+    "flag": "rusa_flago.png"
+  }
+}

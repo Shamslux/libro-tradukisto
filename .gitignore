@@ -9,13 +9,53 @@ __pycache__/
 env/
 venv/
 
-# Projekto
+# Project
 eliroj/
 temp_*
 *.epub
 .streamlit/
 *.log
 
+
 # OS
 .DS_Store
 Thumbs.db
+
+# Spec-Driven Development
+
+SDD.md
+code.md
+automatiza_repo.py
+
+# Legacy
+
+legacy_temp
+
+# Rust / Tauri
+/src-tauri/target/
+**/*.rs.bk
+*.exe
+*.pdb
+*.dll
+
+# Node / Vite
+/node_modules/
+/src-ui/node_modules/
+/src-ui/dist/
+.vite/
+.output/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Logs and Debug
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
