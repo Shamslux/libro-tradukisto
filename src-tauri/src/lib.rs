@@ -4,7 +4,7 @@ use percent_encoding::percent_decode_str;
 use reqwest::Client;
 use roxmltree::Document;
 use scraper::{Html, Selector};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
     collections::HashMap,
@@ -16,7 +16,7 @@ use std::{
 use tauri::{AppHandle, Manager};
 use tauri_plugin_dialog::DialogExt;
 use tokio::time::sleep;
-use zip::ZipArchive;
+use zip::{write::FileOptions, CompressionMethod, ZipArchive, ZipWriter};
 
 const GOOGLE_FREE_ENDPOINT: &str =
     "https://translate.googleapis.com/translate_a/single";
@@ -51,7 +51,26 @@ struct ExtractedChapter {
     content: String,
 }
 
-/// Abre o seletor nativo do sistema operacional.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TranslatedChapterPayload {
+    internal_path: String,
+    content: String,
+}
+
+/// Dynamic payload container designed to route translation requests to different providers safely.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TranslationRequest {
+    text: String,
+    target_lang: String,
+    provider: String, // "local" | "openai" | "claude" | "gemini"
+    model: String,
+    api_key: Option<String>,
+    base_url_override: Option<String>,
+}
+
+/// Opens the native operating system file picker to select an EPUB book.
 #[tauri::command]
 async fn selecionar_epub(app: AppHandle) -> Result<String, String> {
     let selected_file = app
@@ -62,24 +81,24 @@ async fn selecionar_epub(app: AppHandle) -> Result<String, String> {
 
     selected_file
         .map(|path| path.to_string())
-        .ok_or_else(|| "Nenhum arquivo selecionado".to_string())
+        .ok_or_else(|| "No file selected".to_string())
 }
 
-/// Retorna o diretório usado para os arquivos de cache.
+/// Locates and initializes the local cache folder within the AppData workspace directory.
 fn cache_directory(app: &AppHandle) -> Result<PathBuf, String> {
     let directory = app
         .path()
         .app_data_dir()
-        .map_err(|error| format!("Não foi possível localizar AppData: {error}"))?
+        .map_err(|error| format!("Could not locate AppData directory: {error}"))?
         .join("cache");
 
     fs::create_dir_all(&directory)
-        .map_err(|error| format!("Não foi possível criar o diretório de cache: {error}"))?;
+        .map_err(|error| format!("Could not create cache directory: {error}"))?;
 
     Ok(directory)
 }
 
-/// Impede que a chave recebida forme caminhos arbitrários.
+/// Sanitizes the cache identifier string to block directory-traversal attempts.
 fn sanitize_cache_key(key: &str) -> Result<String, String> {
     let sanitized: String = key
         .chars()
@@ -96,20 +115,19 @@ fn sanitize_cache_key(key: &str) -> Result<String, String> {
         .collect();
 
     if sanitized.trim_matches('_').is_empty() {
-        return Err("A chave do cache é inválida".to_string());
+        return Err("The cache key is invalid".to_string());
     }
 
     Ok(sanitized)
 }
 
+/// Computes the exact file path for a specific cached document project.
 fn cache_file_path(app: &AppHandle, key: &str) -> Result<PathBuf, String> {
     let safe_key = sanitize_cache_key(key)?;
     Ok(cache_directory(app)?.join(format!("{safe_key}.json")))
 }
 
-/// Carrega um cache persistente.
-///
-/// `key_nome` no Rust corresponde a `keyNome` no frontend.
+/// Reads a saved translation session from the local cache storage.
 #[tauri::command]
 async fn carregar_progresso_cache(
     app: AppHandle,
@@ -118,24 +136,22 @@ async fn carregar_progresso_cache(
     let path = cache_file_path(&app, &key_nome)?;
 
     if !path.exists() {
-        println!("Nenhum cache encontrado em: {}", path.display());
+        println!("No translation cache found at: {}", path.display());
         return Ok(None);
     }
 
     let raw_json = fs::read_to_string(&path)
-        .map_err(|error| format!("Não foi possível ler o cache: {error}"))?;
+        .map_err(|error| format!("Could not read the cache file: {error}"))?;
 
     let payload: Value = serde_json::from_str(&raw_json)
-        .map_err(|error| format!("O cache contém JSON inválido: {error}"))?;
+        .map_err(|error| format!("The cache contains invalid JSON formatting: {error}"))?;
 
-    println!("Cache carregado de: {}", path.display());
+    println!("Cache successfully retrieved from: {}", path.display());
 
     Ok(Some(payload))
 }
 
-/// Salva o cache usando escrita temporária antes da substituição.
-///
-/// `key_nome` corresponde a `keyNome`.
+/// Saves translation progress atomically utilizing a temporary file swap to prevent data corruption.
 #[tauri::command]
 async fn salvar_progresso_cache(
     app: AppHandle,
@@ -146,36 +162,36 @@ async fn salvar_progresso_cache(
     let temporary = destination.with_extension("json.tmp");
 
     let formatted_json = serde_json::to_vec_pretty(&payload)
-        .map_err(|error| format!("Não foi possível serializar o cache: {error}"))?;
+        .map_err(|error| format!("Failed to serialize translation cache: {error}"))?;
 
     {
         let mut temporary_file = File::create(&temporary)
-            .map_err(|error| format!("Não foi possível criar o cache temporário: {error}"))?;
+            .map_err(|error| format!("Could not write to temporary cache: {error}"))?;
 
         temporary_file
             .write_all(&formatted_json)
-            .map_err(|error| format!("Não foi possível escrever o cache temporário: {error}"))?;
+            .map_err(|error| format!("Failed writing contents to cache buffer: {error}"))?;
 
         temporary_file
             .sync_all()
-            .map_err(|error| format!("Não foi possível sincronizar o cache: {error}"))?;
+            .map_err(|error| format!("Failed syncing the cache file to disk: {error}"))?;
     }
 
-    // No Windows, renomear sobre um arquivo existente pode falhar.
+    // Windows filesystem lock handling: Remove the stale destination manually if it exists
     if destination.exists() {
         fs::remove_file(&destination)
-            .map_err(|error| format!("Não foi possível substituir o cache anterior: {error}"))?;
+            .map_err(|error| format!("Could not clear the previous cache index: {error}"))?;
     }
 
     fs::rename(&temporary, &destination)
-        .map_err(|error| format!("Não foi possível concluir o salvamento do cache: {error}"))?;
+        .map_err(|error| format!("Failed to complete atomic cache transition swap: {error}"))?;
 
-    println!("Cache salvo em: {}", destination.display());
+    println!("Cache safely persisted to disk at: {}", destination.display());
 
     Ok(())
 }
 
-/// Lê um arquivo textual dentro do ZIP.
+/// Extracts raw bytes from a target document zipped inside the EPUB archive.
 fn read_zip_text(
     archive: &mut ZipArchive<File>,
     resource_path: &str,
@@ -188,19 +204,19 @@ fn read_zip_text(
         .by_name(&decoded_path)
         .map_err(|error| {
             format!(
-                "Não foi possível abrir o recurso '{decoded_path}' dentro do EPUB: {error}"
+                "Could not locate internal resource '{decoded_path}' inside the EPUB structure: {error}"
             )
         })?;
 
     let mut bytes = Vec::new();
 
     file.read_to_end(&mut bytes)
-        .map_err(|error| format!("Não foi possível ler '{decoded_path}': {error}"))?;
+        .map_err(|error| format!("Failed to extract the stream bytes from '{decoded_path}': {error}"))?;
 
     Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
-/// Normaliza caminhos internos sem permitir que `..` escape da raiz lógica.
+/// Normalizes internal folder structures safely while blocking parent directory jumps.
 fn normalize_epub_path(path: &Path) -> String {
     let mut normalized_components: Vec<String> = Vec::new();
 
@@ -219,6 +235,7 @@ fn normalize_epub_path(path: &Path) -> String {
     normalized_components.join("/")
 }
 
+/// Resolves a path containing relative references inside the OPF metadata workspace directory.
 fn resolve_epub_resource(opf_path: &str, href: &str) -> String {
     let opf_directory = Path::new(opf_path)
         .parent()
@@ -227,6 +244,7 @@ fn resolve_epub_resource(opf_path: &str, href: &str) -> String {
     normalize_epub_path(&opf_directory.join(href))
 }
 
+/// Searches the header layout structure of a chapter's HTML to locate a descriptive title.
 fn extract_document_title(html: &str, fallback: &str) -> String {
     let document = Html::parse_document(html);
 
@@ -253,22 +271,20 @@ fn extract_document_title(html: &str, fallback: &str) -> String {
     Path::new(fallback)
         .file_stem()
         .and_then(|value| value.to_str())
-        .unwrap_or("Capítulo")
+        .unwrap_or("Chapter")
         .replace(['_', '-'], " ")
 }
 
-/// Extrai capítulos na ordem oficial do spine do EPUB.
-///
-/// O comando preserva o HTML/XHTML integral de cada documento.
+/// Scans the selected EPUB file and parses XHTML/HTML chapters according to the OPF spine ordering.
 #[tauri::command]
 async fn extract_epub_chapters(
     path: String,
 ) -> Result<Vec<ExtractedChapter>, String> {
     let epub_file = File::open(&path)
-        .map_err(|error| format!("Não foi possível abrir o EPUB '{path}': {error}"))?;
+        .map_err(|error| format!("Could not open EPUB file at target '{path}': {error}"))?;
 
     let mut archive = ZipArchive::new(epub_file)
-        .map_err(|error| format!("O arquivo selecionado não é um EPUB/ZIP válido: {error}"))?;
+        .map_err(|error| format!("The selected file is not a valid EPUB/ZIP archive: {error}"))?;
 
     let container_xml = read_zip_text(
         &mut archive,
@@ -276,21 +292,21 @@ async fn extract_epub_chapters(
     )?;
 
     let container_document = Document::parse(&container_xml)
-        .map_err(|error| format!("container.xml inválido: {error}"))?;
+        .map_err(|error| format!("Failed parsing structural container.xml: {error}"))?;
 
     let opf_path = container_document
         .descendants()
         .find(|node| node.has_tag_name("rootfile"))
         .and_then(|node| node.attribute("full-path"))
         .ok_or_else(|| {
-            "O EPUB não informa o arquivo OPF em META-INF/container.xml".to_string()
+            "The EPUB container does not declare a rootfile OPF index".to_string()
         })?
         .to_string();
 
     let opf_xml = read_zip_text(&mut archive, &opf_path)?;
 
     let opf_document = Document::parse(&opf_xml)
-        .map_err(|error| format!("Arquivo OPF inválido: {error}"))?;
+        .map_err(|error| format!("Failed parsing root OPF document: {error}"))?;
 
     let mut manifest: HashMap<String, ManifestItem> = HashMap::new();
 
@@ -328,7 +344,7 @@ async fn extract_epub_chapters(
         .collect();
 
     if spine_ids.is_empty() {
-        return Err("O EPUB não possui documentos no spine".to_string());
+        return Err("The target EPUB has no readable spine items".to_string());
     }
 
     let mut chapters = Vec::new();
@@ -355,7 +371,7 @@ async fn extract_epub_chapters(
         let content = match read_zip_text(&mut archive, &internal_path) {
             Ok(content) => content,
             Err(error) => {
-                eprintln!("Ignorando recurso ilegível '{internal_path}': {error}");
+                eprintln!("Skipping unreadable structural asset '{internal_path}': {error}");
                 continue;
             }
         };
@@ -372,7 +388,7 @@ async fn extract_epub_chapters(
         chapters.push(ExtractedChapter {
             id: internal_path,
             title: if title.trim().is_empty() {
-                format!("Capítulo {}", index + 1)
+                format!("Chapter {}", index + 1)
             } else {
                 title
             },
@@ -382,13 +398,12 @@ async fn extract_epub_chapters(
 
     if chapters.is_empty() {
         return Err(
-            "Nenhum capítulo HTML/XHTML legível foi encontrado no spine do EPUB"
-                .to_string(),
+            "No readable HTML/XHTML chapters found within the EPUB spine".to_string(),
         );
     }
 
     println!(
-        "{} capítulos extraídos de: {}",
+        "{} chapters successfully extracted from target: {}",
         chapters.len(),
         path
     );
@@ -396,6 +411,7 @@ async fn extract_epub_chapters(
     Ok(chapters)
 }
 
+/// Builds a client instance to execute HTTP requests with custom timeouts and user-agents.
 fn translation_http_client() -> Result<Client, String> {
     Client::builder()
         .timeout(Duration::from_secs(30))
@@ -404,9 +420,10 @@ fn translation_http_client() -> Result<Client, String> {
              AppleWebKit/537.36 Chrome/133 Safari/537.36",
         )
         .build()
-        .map_err(|error| format!("Não foi possível criar o cliente HTTP: {error}"))
+        .map_err(|error| format!("Failed to initialize HTTP translation client: {error}"))
 }
 
+/// Parses arrays or standard dictionary structures returned by Google Translate's single API.
 fn parse_google_free_response(payload: &Value) -> Option<String> {
     if let Some(sentences) = payload
         .get("sentences")
@@ -426,7 +443,6 @@ fn parse_google_free_response(payload: &Value) -> Option<String> {
         }
     }
 
-    // Compatibilidade com a resposta em arrays usada por algumas variantes.
     if let Some(groups) = payload.as_array() {
         let mut translated = String::new();
 
@@ -450,9 +466,7 @@ fn parse_google_free_response(payload: &Value) -> Option<String> {
     None
 }
 
-/// Traduz um bloco usando o endpoint GTX.
-///
-/// `target_lang` corresponde a `targetLang`.
+/// Translates a localized text block using Google's free translation portal (GTX).
 #[tauri::command]
 async fn translate_text_free(
     text: String,
@@ -463,11 +477,11 @@ async fn translate_text_free(
     }
 
     if target_lang.trim().is_empty() {
-        return Err("O idioma de destino não foi informado".to_string());
+        return Err("The destination target language is missing".to_string());
     }
 
     let client = translation_http_client()?;
-    let mut last_error = "Resposta vazia do serviço de tradução".to_string();
+    let mut last_error = "Empty response returned from Google Free portal".to_string();
 
     for attempt in 1_u64..=3 {
         let response = client
@@ -489,7 +503,7 @@ async fn translate_text_free(
 
                 if !status.is_success() {
                     last_error = format!(
-                        "Google Free respondeu com HTTP {status}"
+                        "Google Free service returned HTTP status {status}"
                     );
                 } else {
                     match response.json::<Value>().await {
@@ -501,12 +515,12 @@ async fn translate_text_free(
                             }
 
                             last_error =
-                                "Google Free retornou uma resposta sem tradução"
+                                "Google Free responded without a valid translation string"
                                     .to_string();
                         }
                         Err(error) => {
                             last_error = format!(
-                                "Resposta inválida do Google Free: {error}"
+                                "Invalid JSON response payload from Google Free: {error}"
                             );
                         }
                     }
@@ -514,7 +528,7 @@ async fn translate_text_free(
             }
             Err(error) => {
                 last_error =
-                    format!("Falha ao acessar o Google Free: {error}");
+                    format!("Failed to establish connection with Google Free: {error}");
             }
         }
 
@@ -526,6 +540,7 @@ async fn translate_text_free(
     Err(last_error)
 }
 
+/// Maps a language ISO code to its readable localized native name descriptor.
 fn target_language_name(code: &str) -> &str {
     match code {
         "eo" => "Esperanto",
@@ -541,6 +556,7 @@ fn target_language_name(code: &str) -> &str {
     }
 }
 
+/// Strips markdown block indicators and extracts raw code strings cleanly.
 fn clean_gemini_output(value: &str) -> String {
     let trimmed = value.trim();
 
@@ -561,6 +577,7 @@ fn clean_gemini_output(value: &str) -> String {
     trimmed.to_string()
 }
 
+/// Extracts translated content from a Gemini API completion payload.
 fn extract_gemini_text(payload: &Value) -> Option<String> {
     let parts = payload
         .get("candidates")?
@@ -582,11 +599,7 @@ fn extract_gemini_text(payload: &Value) -> Option<String> {
     }
 }
 
-/// Traduz um bloco por meio da API Gemini.
-///
-/// A chave é recebida somente em memória e não é salva no cache.
-///
-/// `target_lang` corresponde a `targetLang`.
+/// Translates a specific segment using Google's Gemini Flash engine.
 #[tauri::command]
 async fn translate_text_gemini(
     text: String,
@@ -598,23 +611,23 @@ async fn translate_text_gemini(
     }
 
     if key.trim().is_empty() {
-        return Err("A chave da API Gemini não foi informada".to_string());
+        return Err("The Gemini API Key is missing".to_string());
     }
 
     if target_lang.trim().is_empty() {
-        return Err("O idioma de destino não foi informado".to_string());
+        return Err("The destination target language is missing".to_string());
     }
 
     let target_language = target_language_name(&target_lang);
 
     let prompt = format!(
-        "Você é um tradutor profissional.\n\
-         Traduza o conteúdo a seguir para {target_language}.\n\
-         Preserve integralmente qualquer estrutura HTML.\n\
-         Não traduza nomes de tags, atributos, classes, IDs, URLs ou caminhos.\n\
-         Não acrescente explicações, observações ou Markdown.\n\
-         Retorne somente o conteúdo traduzido.\n\n\
-         CONTEÚDO:\n{text}"
+        "You are a professional translator.\n\
+         Translate the following content into {target_language}.\n\
+         Completely preserve any HTML structure.\n\
+         Do not translate tag names, attributes, classes, IDs, URLs, or file paths.\n\
+         Do not append any explanations, side notes, or Markdown formatting.\n\
+         Return only the translated content.\n\n\
+         CONTENT:\n{text}"
     );
 
     let endpoint = format!(
@@ -639,7 +652,7 @@ async fn translate_text_gemini(
     });
 
     let client = translation_http_client()?;
-    let mut last_error = "Resposta vazia da API Gemini".to_string();
+    let mut last_error = "Empty response returned from the Gemini API gateway".to_string();
 
     for attempt in 1_u64..=3 {
         let response = client
@@ -658,7 +671,7 @@ async fn translate_text_gemini(
                     .await
                     .map_err(|error| {
                         format!(
-                            "A API Gemini retornou uma resposta inválida: {error}"
+                            "Gemini API returned an unparseable response structure: {error}"
                         )
                     })?;
 
@@ -670,19 +683,19 @@ async fn translate_text_gemini(
                     }
 
                     last_error =
-                        "A API Gemini não retornou texto traduzido".to_string();
+                        "The Gemini API responded successfully but did not return any content text".to_string();
                 } else {
                     let api_message = response_body
                         .get("error")
                         .and_then(|error| error.get("message"))
                         .and_then(Value::as_str)
-                        .unwrap_or("Erro não especificado");
+                        .unwrap_or("Unspecified API error");
 
                     last_error = format!(
-                        "Gemini respondeu com HTTP {status}: {api_message}"
+                        "Gemini gateway responded with status {status}: {api_message}"
                     );
 
-                    // Erros de autenticação e requisição não melhoram com repetição.
+                    // Halt execution retries if an authorization issue is raised
                     if status.as_u16() == 400
                         || status.as_u16() == 401
                         || status.as_u16() == 403
@@ -693,7 +706,7 @@ async fn translate_text_gemini(
             }
             Err(error) => {
                 last_error =
-                    format!("Falha ao acessar a API Gemini: {error}");
+                    format!("Failed to reach the Gemini API endpoint: {error}");
             }
         }
 
@@ -703,6 +716,267 @@ async fn translate_text_gemini(
     }
 
     Err(last_error)
+}
+
+/// Security-hardened command handler to dispatch translations across local and cloud providers.
+/// Keeps API credentials purely in transient memory with automated request sanitization.
+#[tauri::command]
+async fn translate_text_ai(req: TranslationRequest) -> Result<String, String> {
+    if req.text.trim().is_empty() {
+        return Ok(req.text);
+    }
+
+    let target_language = target_language_name(&req.target_lang);
+
+    // Standard instruction template for structural HTML preservation across translation engines
+    let prompt = format!(
+        "You are a professional translator.\n\
+         Translate the following content into {target_language}.\n\
+         Completely preserve any HTML structure.\n\
+         Do not translate tag names, attributes, classes, IDs, URLs, or file paths.\n\
+         Do not append any explanations, side notes, or Markdown formatting.\n\
+         Return only the translated content.\n\n\
+         CONTENT:\n{}",
+        req.text
+    );
+
+    let client = translation_http_client()?;
+
+    match req.provider.as_str() {
+        "local" | "openai" | "claude" => {
+            let is_local = req.provider == "local";
+            let is_claude = req.provider == "claude";
+            
+            // Set default targets based on the chosen translation provider
+            let default_url = if is_claude {
+                "https://api.anthropic.com/v1/messages".to_string()
+            } else {
+                "https://api.openai.com/v1/chat/completions".to_string()
+            };
+            
+            let mut endpoint = req.base_url_override.unwrap_or(default_url);
+            
+            // Auto-append chat API parameters for local interfaces if neglected by the user
+            if is_local && !endpoint.ends_with("/chat/completions") {
+                if endpoint.ends_with('/') {
+                    endpoint.push_str("chat/completions");
+                } else {
+                    endpoint.push_str("/chat/completions");
+                }
+            }
+
+            let mut headers = reqwest::header::HeaderMap::new();
+            headers.insert(
+                reqwest::header::CONTENT_TYPE,
+                reqwest::header::HeaderValue::from_static("application/json"),
+            );
+
+            // Safely inject API key headers only if credentials are provided
+            if let Some(ref key) = req.api_key {
+                if !key.trim().is_empty() {
+                    let mut auth_val = reqwest::header::HeaderValue::from_str(&format!("Bearer {key}"))
+                        .map_err(|_| "Failed to format Authorization header string".to_string())?;
+                    
+                    if is_claude {
+                        auth_val = reqwest::header::HeaderValue::from_str(key)
+                            .map_err(|_| "Failed to format Anthropic key header".to_string())?;
+                        headers.insert(
+                            reqwest::header::HeaderName::from_static("x-api-key"),
+                            auth_val.clone(),
+                        );
+                        headers.insert(
+                            reqwest::header::HeaderName::from_static("anthropic-version"),
+                            reqwest::header::HeaderValue::from_static("2023-06-01"),
+                        );
+                    } else {
+                        auth_val.set_sensitive(true);
+                        headers.insert(reqwest::header::AUTHORIZATION, auth_val);
+                    }
+                }
+            } else if !is_local {
+                return Err(format!("An API Key is required to utilize the {} service", req.provider));
+            }
+
+            // Create provider-specific request payload schemas
+            let body = if is_claude {
+                json!({
+                    "model": req.model,
+                    "max_tokens": 4096,
+                    "system": "Translate exactly as requested without explanations.",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.2
+                })
+            } else {
+                json!({
+                    "model": req.model,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.2
+                })
+            };
+
+            // Process HTTP network calls while protecting key strings from leakage in system logs
+            let response = client
+                .post(&endpoint)
+                .headers(headers)
+                .json(&body)
+                .send()
+                .await
+                .map_err(|err| {
+                    let err_string = err.to_string();
+                    let key_str = req.api_key.clone().unwrap_or_default();
+                    format!(
+                        "Network communication with translation service failed: {}",
+                        if !key_str.is_empty() { err_string.replace(&key_str, "***") } else { err_string }
+                    )
+                })?;
+
+            let status = response.status();
+            let res_json: Value = response.json().await.map_err(|err| {
+                format!("Failed parsing the service's returned payload: {err}")
+            })?;
+
+            if status.is_success() {
+                let translated = if is_claude {
+                    res_json
+                        .get("content")
+                        .and_then(|c| c.as_array())
+                        .and_then(|a| a.first())
+                        .and_then(|first| first.get("text"))
+                        .and_then(|text| text.as_str())
+                        .ok_or_else(|| "Unexpected Claude API JSON response structure".to_string())?
+                } else {
+                    res_json
+                        .get("choices")
+                        .and_then(|c| c.as_array())
+                        .and_then(|a| a.first())
+                        .and_then(|first| first.get("message"))
+                        .and_then(|m| m.get("content"))
+                        .and_then(|content| content.as_str())
+                        .ok_or_else(|| "Unexpected OpenAI API JSON response structure".to_string())?
+                };
+                
+                Ok(clean_gemini_output(translated))
+            } else {
+                let err_msg = res_json
+                    .get("error")
+                    .and_then(|err| err.get("message"))
+                    .and_then(|m| m.as_str())
+                    .unwrap_or("An unspecified server error was raised");
+                
+                let key_str = req.api_key.unwrap_or_default();
+                let sanitized_err = if !key_str.is_empty() { err_msg.replace(&key_str, "***") } else { err_msg.to_string() };
+                
+                Err(format!("The translation service returned error {status}: {sanitized_err}"))
+            }
+        }
+        "gemini" => {
+            let key = req.api_key.ok_or_else(|| "Gemini API key is missing".to_string())?;
+            if key.trim().is_empty() {
+                return Err("Gemini API key is empty".to_string());
+            }
+            translate_text_gemini(req.text, req.target_lang, key).await
+        }
+        _ => Err(format!("The requested translation provider '{}' is not supported.", req.provider)),
+    }
+}
+
+/// Rebuilds the EPUB package, overlaying translated chapters while leaving original formatting intact.
+/// Inserts the uncompressed `mimetype` file first to guarantee validation compliance.
+#[tauri::command]
+async fn gerar_epub(
+    original_epub_path: String,
+    output_epub_path: String,
+    translated_chapters: Vec<TranslatedChapterPayload>,
+) -> Result<(), String> {
+    let original_file = File::open(&original_epub_path)
+        .map_err(|e| format!("Could not open the source EPUB archive: {e}"))?;
+    
+    let mut original_archive = ZipArchive::new(original_file)
+        .map_err(|e| format!("The original ebook is not a valid ZIP structure: {e}"))?;
+
+    let output_file = File::create(&output_epub_path)
+        .map_err(|e| format!("Could not initialize the target output file: {e}"))?;
+    
+    let mut writer = ZipWriter::new(output_file);
+
+    let translated_map: HashMap<String, String> = translated_chapters
+        .into_iter()
+        .map(|ch| (ch.internal_path, ch.content))
+        .collect();
+
+    // 1. Force uncompressed mimetype write operation as index 0 for EPUB format validation compliance
+    let mut mimetype_buffer = Vec::new();
+    if let Ok(mut mimetype_file) = original_archive.by_name("mimetype") {
+        mimetype_file
+            .read_to_end(&mut mimetype_buffer)
+            .map_err(|e| format!("Failed to read source mimetype stream: {e}"))?;
+    } else {
+        mimetype_buffer = b"application/epub+zip".to_vec();
+    }
+
+    let mimetype_options = FileOptions::default()
+        .compression_method(CompressionMethod::Stored)
+        .unix_permissions(0o644);
+
+    writer
+        .start_file("mimetype", mimetype_options)
+        .map_err(|e| format!("Failed initializing mimetype index in output archive: {e}"))?;
+    
+    writer
+        .write_all(&mimetype_buffer)
+        .map_err(|e| format!("Failed writing mimetype string into output: {e}"))?;
+
+    // 2. Clone styling, metadata and image assets while substituting the translated HTML documents
+    for i in 0..original_archive.len() {
+        let mut file = original_archive
+            .by_index(i)
+            .map_err(|e| format!("Failed to read archive contents at index {i}: {e}"))?;
+        
+        let name = file.name().to_string();
+
+        if name == "mimetype" {
+            continue;
+        }
+
+        let options = FileOptions::default()
+            .compression_method(CompressionMethod::Deflated)
+            .unix_permissions(0o644);
+
+        writer
+            .start_file(name.clone(), options)
+            .map_err(|e| format!("Failed to prepare file index '{name}' in destination archive: {e}"))?;
+
+        if let Some(translated_html) = translated_map.get(&name) {
+            writer
+                .write_all(translated_html.as_bytes())
+                .map_err(|e| format!("Failed writing translated markup content for '{name}': {e}"))?;
+        } else {
+            let mut buffer = Vec::new();
+            file.read_to_end(&mut buffer)
+                .map_err(|e| format!("Failed reading original asset source '{name}': {e}"))?;
+            
+            writer
+                .write_all(&buffer)
+                .map_err(|e| format!("Failed cloning original asset metadata '{name}' to output: {e}"))?;
+        }
+    }
+
+    writer
+        .finish()
+        .map_err(|e| format!("Failed to complete ZIP writing operations: {e}"))?;
+
+    println!("Translated EPUB compiled successfully: {}", output_epub_path);
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -728,7 +1002,9 @@ pub fn run() {
             extract_epub_chapters,
             translate_text_free,
             translate_text_gemini,
+            translate_text_ai,
+            gerar_epub,
         ])
         .run(tauri::generate_context!())
-        .expect("erro ao executar a aplicação Tauri");
+        .expect("An error occurred while launching the Tauri application workspace");
 }
