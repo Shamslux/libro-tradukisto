@@ -1,22 +1,24 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "libro-tradukisto",
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Libro Tradukisto",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "io.github.shamslux.librotradukisto",
   "build": {
     "frontendDist": "../src-ui/dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "npm run ui:dev",
-    "beforeBuildCommand": "npm run core:build; npm run ui:build"
+    "beforeBuildCommand": "npm run build"
   },
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Libro Tradukisto",
-        "width": 1150,
+        "width": 1100,
         "height": 760,
-        "minWidth": 950,
-        "minHeight": 600,
+        "minWidth": 900,
+        "minHeight": 620,
+        "center": true,
         "resizable": true,
         "fullscreen": false
       }

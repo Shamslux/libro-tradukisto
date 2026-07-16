@@ -7,7 +7,7 @@
   ],
   "permissions": [
     "core:default",
-    "dialog:default",
-    "fs:default"
+    "dialog:allow-open",
+    "fs:allow-read"
   ]
 }

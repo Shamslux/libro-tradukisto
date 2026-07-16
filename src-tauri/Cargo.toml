@@ -1,30 +1,53 @@
 [package]
-name = "app"
+name = "libro-tradukisto"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
-repository = ""
+description = "A desktop application for translating EPUB books while preserving their structure and formatting."
+authors = ["Shamslux"]
+license = "GPL-3.0-only"
+repository = "https://github.com/Shamslux/libro-tradukisto"
 edition = "2021"
 rust-version = "1.77.2"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lib]
-name = "app_lib"
+name = "libro_tradukisto_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.6.2", features = [] }
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
-serde_json = "1.0"
-serde = { version = "1.0", features = ["derive"] }
+tauri = { version = "2", features = [] }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
 log = "0.4"
-tauri = { version = "2.11.2", features = [] }
-tauri-plugin-log = "2"
+
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
-epub = "2.1.5"
-reqwest = { version = "0.13.3", features = ["json"] }
-urlencoding = "2.1.3"
+tauri-plugin-log = "2"
+
+# Leitura do arquivo EPUB/ZIP
+zip = "0.6"
+
+# Leitura de container.xml e OPF
+roxmltree = "0.20"
+
+# Extração de títulos de HTML/XHTML
+scraper = "0.20"
+
+# Normalização de caminhos percent-encoded dentro do EPUB
+percent-encoding = "2"
+
+# Requisições aos mecanismos de tradução
+reqwest = {
+    version = "0.12",
+    default-features = false,
+    features = ["json", "rustls-tls"]
+}
+
+# Timeout, espera e tentativas assíncronas
+tokio = {
+    version = "1",
+    features = ["time"]
+}

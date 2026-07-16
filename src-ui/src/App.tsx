@@ -190,17 +190,28 @@ export default function App() {
       
       setEpubPath(selectedPath);
 
-      const cacheKey = getCacheKeyName(selectedPath, targetLanguage);
-      const savedSession = await invoke<CachePayload | null>('carregar_progresso_cache', { keyNome: cacheKey });
+  const cacheKey = getCacheKeyName(selectedPath, targetLanguage);
 
-      if (savedSession && savedSession.chapters && savedSession.chapters.length > 0) {
-        setChapters(savedSession.chapters);
-        setEngine(savedSession.engine || 'google_free');
-        setInternalStatusKey('statusLoaded');
-        return;
-      }
+  const savedSession = await invoke<CachePayload | null>(
+    'carregar_progresso_cache',
+    { keyNome: cacheKey }
+  );
 
-      const rawChapters = await invoke<ExtractedChapter[]>('extract_epub_chapters', { path: selectedPath });
+  if (
+    savedSession &&
+    savedSession.chapters &&
+    savedSession.chapters.length > 0
+  ) {
+    setChapters(savedSession.chapters);
+    setEngine(savedSession.engine || 'google_free');
+    setInternalStatusKey('statusLoaded');
+    return;
+  }
+
+  const rawChapters = await invoke<ExtractedChapter[]>(
+    'extract_epub_chapters',
+    { path: selectedPath }
+  );
       
       if (!rawChapters || rawChapters.length === 0) {
         setCustomError('Error: Backend returned an empty chapter schema matrix.');
@@ -241,16 +252,37 @@ export default function App() {
     }
   };
 
-  const handleBlockChange = (chapterId: string, blockId: string, newValue: string) => {
-    const updatedChapters = chapters.map(ch => {
-      if (ch.id !== chapterId) return ch;
+  const handleBlockChange = (
+    chapterId: string,
+    blockId: string,
+    newValue: string
+  ) => {
+    const updatedChapters = chapters.map((chapter) => {
+      if (chapter.id !== chapterId) {
+        return chapter;
+      }
+
+      const updatedBlocks = chapter.blocks.map((block) =>
+        block.id === blockId
+          ? {
+              ...block,
+              translated: newValue,
+              isEdited: true,
+            }
+          : block
+      );
+
+      const allBlocksTranslated = updatedBlocks.every(
+        (block) => block.translated.trim().length > 0
+      );
+
       return {
-        ...ch,
-        blocks: ch.blocks.map(b => 
-          b.id === blockId ? { ...b, translated: newValue, isEdited: true } : b
-        )
+        ...chapter,
+        blocks: updatedBlocks,
+        status: allBlocksTranslated ? 'completed' : 'pending',
       };
     });
+
     setChapters(updatedChapters);
   };
 
@@ -266,8 +298,11 @@ export default function App() {
     }
   };
 
-  const handleTranslateSelectedChapterOnly = async () => {
+  const handleTranslateSelectedChapterOnly = async (
+    forceRetranslate = false
+  ) => {
     if (!selectedChapterId || !activeChapter) return;
+
     if (engine === 'gemini' && !apiKey) {
       setCustomError(t['errKey'] || 'Error: API key missing.');
       return;
@@ -276,38 +311,64 @@ export default function App() {
     try {
       setCustomError('');
       setIsTranslating(true);
-      
-      let workingChapters = chapters.map(ch => ch.id === selectedChapterId ? { ...ch, status: 'translating' as const } : ch);
-      setChapters(workingChapters);
-      
-      const targetChapterIndex = workingChapters.findIndex(ch => ch.id === selectedChapterId);
-      const totalBlocks = activeChapter.blocks.length;
-      
-      if (totalBlocks === 0) {
-        setIsTranslating(false);
-        return;
-      }
 
-      for (let j = 0; j < totalBlocks; j++) {
-        const currentBlock = workingChapters[targetChapterIndex].blocks[j];
-        if (!currentBlock.translated) {
+      const workingChapters = chapters.map((chapter) =>
+        chapter.id === selectedChapterId
+          ? { ...chapter, status: 'translating' as const }
+          : chapter
+      );
+
+      const targetChapterIndex = workingChapters.findIndex(
+        (chapter) => chapter.id === selectedChapterId
+      );
+
+      const totalBlocks =
+        workingChapters[targetChapterIndex].blocks.length;
+
+      setChapters([...workingChapters]);
+
+      for (let index = 0; index < totalBlocks; index++) {
+        const currentBlock =
+          workingChapters[targetChapterIndex].blocks[index];
+
+        if (forceRetranslate || !currentBlock.translated.trim()) {
           try {
-            currentBlock.translated = await requestTranslationFromRust(currentBlock.original);
-          } catch (err) {
-            currentBlock.translated = `[Translation error: ${err}]`;
+            currentBlock.translated =
+              await requestTranslationFromRust(currentBlock.original);
+
+            currentBlock.isEdited = false;
+          } catch (error) {
+            currentBlock.translated = `[Translation error: ${error}]`;
           }
         }
-        setProgress(Math.round(((j + 1) / totalBlocks) * 100));
+
+        setProgress(
+          Math.round(((index + 1) / totalBlocks) * 100)
+        );
+
         setChapters([...workingChapters]);
       }
 
       workingChapters[targetChapterIndex].status = 'completed';
+
       setChapters([...workingChapters]);
-      setIsTranslating(false);
-      await forceSaveCacheToDisk(workingChapters, epubPath, targetLanguage, engine);
-    } catch (globalErr: any) {
-      setCustomError(`Error: ${globalErr}`);
-      setChapters(prev => prev.map(ch => ch.id === selectedChapterId ? { ...ch, status: 'error' as const } : ch));
+      await forceSaveCacheToDisk(
+        workingChapters,
+        epubPath,
+        targetLanguage,
+        engine
+      );
+    } catch (error) {
+      setCustomError(`Error: ${error}`);
+
+      setChapters((previous) =>
+        previous.map((chapter) =>
+          chapter.id === selectedChapterId
+            ? { ...chapter, status: 'error' as const }
+            : chapter
+        )
+      );
+    } finally {
       setIsTranslating(false);
     }
   };
@@ -536,7 +597,7 @@ export default function App() {
                 </div>
                 <button 
                   onClick={handleTranslateSelectedChapterOnly} 
-                  disabled={isTranslating || activeChapter.status === 'completed'} 
+                  disabled={isTranslating}
                   className="btn-trigger-segment-translate"
                 >
                   Translate Segment Block Matrix

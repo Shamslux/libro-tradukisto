@@ -1,62 +1,13 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Env
+﻿# BEGIN LibroTradukisto generated files
+**/node_modules/
+**/target/
+dist/
 .env
-.venv
-env/
-venv/
-
-# Project
-eliroj/
-temp_*
-*.epub
-.streamlit/
+temp_*.epub
 *.log
+runtime-artifacts/
+docs/
+scripts/
+src-core/dist/
+# END LibroTradukisto generated files
 
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Spec-Driven Development
-
-SDD.md
-code.md
-automatiza_repo.py
-repo_tree.txt
-
-# Legacy
-
-legacy_temp
-
-# Rust / Tauri
-/src-tauri/target/
-**/*.rs.bk
-*.exe
-*.pdb
-*.dll
-
-# Node / Vite
-/node_modules/
-/src-ui/node_modules/
-/src-ui/dist/
-.vite/
-.output/
-
-# IDE / Editor
-.vscode/
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.swp
-
-# Logs and Debug
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*

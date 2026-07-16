@@ -1,15 +1,1 @@
-{
-  "name": "src-core",
-  "version": "1.0.0",
-  "private": true,
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc"
-  },
-  "dependencies": {
-    "@google/genai": "latest",
-    "cheerio": "^1.0.0-rc.12",
-    "axios": "^1.6.7"
-  }
-}
+{"name": "src-core", "version": "1.0.0", "private": true, "main": "dist/index.js", "types": "dist/index.d.ts", "scripts": {"build": "tsc"}, "dependencies": {"@google/genai": "^1.0.0", "cheerio": "^1.0.0-rc.12", "axios": "^1.6.7"}}

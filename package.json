@@ -1,5 +1,6 @@
 {
   "name": "libro-tradukisto-workspace",
+  "version": "0.1.0",
   "private": true,
   "workspaces": [
     "src-ui",
@@ -7,15 +8,17 @@
   ],
   "scripts": {
     "core:build": "npm run build -w src-core",
+    "ui:build": "npm run build -w src-ui",
     "ui:dev": "npm run dev -w src-ui",
+    "ui:preview": "npm run preview -w src-ui",
+    "build": "npm run core:build && npm run ui:build",
+    "dev": "tauri dev",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
     "tauri": "tauri"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.1.0",
     "typescript": "^5.3.3"
-  },
-  "dependencies": {
-    "@tauri-apps/plugin-dialog": "^2.7.1",
-    "@tauri-apps/plugin-fs": "^2.5.1"
   }
 }
