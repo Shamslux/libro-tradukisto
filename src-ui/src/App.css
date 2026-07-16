@@ -2,7 +2,10 @@
    🎨 LIBRO TRADUKISTO - PROFESSIONAL HIGH-PERFORMANCE DESKTOP APPLICATION STYLESHEET
    ========================================================================== */
 
-:root {
+/* 🌌 Dark Theme Variables (Default State) */
+:root,
+html[data-theme="dark"] {
+  color-scheme: dark;
   --bg-app-root: #09090b;
   --bg-panel-sidebar: #121215;
   --bg-panel-viewport: #18181b;
@@ -23,6 +26,50 @@
   --font-interface: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
+/* ☀️ Light Theme Variables (System Preference) */
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg-app-root: #f4f4f5;
+    --bg-panel-sidebar: #ffffff;
+    --bg-panel-viewport: #fafafa;
+    --bg-card-nested: #e4e4e7;
+    --border-subtle: #e4e4e7;
+    --border-active: #a1a1aa;
+    
+    --text-core: #09090b;
+    --text-secondary: #71717a;
+    --text-disabled: #a1a1aa;
+
+    --accent-brand: #4f46e5;
+    --accent-brand-hover: #4338ca;
+    --accent-positive: #059669;
+    --accent-warning: #d97706;
+    --accent-negative: #dc2626;
+  }
+}
+
+/* ☀️ Light Theme Explicit Attribute Force */
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg-app-root: #f4f4f5;
+  --bg-panel-sidebar: #ffffff;
+  --bg-panel-viewport: #fafafa;
+  --bg-card-nested: #e4e4e7;
+  --border-subtle: #e4e4e7;
+  --border-active: #a1a1aa;
+  
+  --text-core: #09090b;
+  --text-secondary: #71717a;
+  --text-disabled: #a1a1aa;
+
+  --accent-brand: #4f46e5;
+  --accent-brand-hover: #4338ca;
+  --accent-positive: #059669;
+  --accent-warning: #d97706;
+  --accent-negative: #dc2626;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -37,6 +84,7 @@ html, body, #root, .app-window-root {
   font-family: var(--font-interface);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 /* ==========================================================================
@@ -56,6 +104,7 @@ html, body, #root, .app-window-root {
   justify-content: space-between;
   padding: 0 20px;
   flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .brand-meta {
@@ -68,7 +117,7 @@ html, body, #root, .app-window-root {
   font-size: 1.1rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  background: linear-gradient(to right, #ffffff, #a1a1aa);
+  background: linear-gradient(to right, var(--text-core), var(--text-secondary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -80,6 +129,7 @@ html, body, #root, .app-window-root {
   color: var(--text-secondary);
   padding: 2px 6px;
   border-radius: 4px;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .status-live-container {
@@ -123,13 +173,21 @@ html, body, #root, .app-window-root {
   gap: 16px;
   flex-shrink: 0;
   overflow-y: auto;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .sidebar-section-card {
-  background-color: rgba(24, 24, 27, 0.4);
+  background-color: rgba(24, 24, 27, 0.05);
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
   padding: 14px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Explicit fallback adjustments for pure dark themes to preserve subtle depth */
+html[data-theme="dark"] .sidebar-section-card,
+:root:not([data-theme="light"]) .sidebar-section-card {
+  background-color: rgba(24, 24, 27, 0.4);
 }
 
 .sidebar-section-card h3 {
@@ -139,6 +197,7 @@ html, body, #root, .app-window-root {
   letter-spacing: 0.05em;
   color: var(--text-secondary);
   margin-bottom: 12px;
+  transition: color 0.15s ease;
 }
 
 .btn-primary-action {
@@ -164,23 +223,39 @@ html, body, #root, .app-window-root {
 
 .file-path-badge {
   margin-top: 10px;
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: rgba(0, 0, 0, 0.05);
   border-radius: 4px;
   padding: 6px 10px;
   font-size: 0.78rem;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  transition: background-color 0.15s ease;
 }
 
-.file-path-badge .path-label { color: var(--text-disabled); font-weight: 500; }
-.file-path-badge .path-text { color: var(--text-secondary); word-break: break-all; }
+html[data-theme="dark"] .file-path-badge,
+:root:not([data-theme="light"]) .file-path-badge {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.file-path-badge .path-label { 
+  color: var(--text-disabled); 
+  font-weight: 500; 
+  transition: color 0.15s ease;
+}
+
+.file-path-badge .path-text { 
+  color: var(--text-secondary); 
+  word-break: break-all; 
+  transition: color 0.15s ease;
+}
 
 .form-control-row label {
   display: block;
   font-size: 0.78rem;
   color: var(--text-secondary);
   margin-bottom: 6px;
+  transition: color 0.15s ease;
 }
 
 .select-lang-input, .input-password-field {
@@ -193,6 +268,7 @@ html, body, #root, .app-window-root {
   font-size: 0.85rem;
   outline: none;
   font-family: var(--font-interface);
+  transition: all 0.15s ease;
 }
 
 .select-lang-input:focus, .input-password-field:focus {
@@ -206,24 +282,38 @@ html, body, #root, .app-window-root {
 }
 
 .radio-tile {
-  flex: 1;
   background-color: var(--bg-app-root);
   border: 1px solid var(--border-subtle);
-  padding: 8px;
-  text-align: center;
-  font-size: 0.8rem;
-  border-radius: 4px;
+  padding: 10px 8px;
+  text-align: left;
+  border-radius: 6px;
   cursor: pointer;
   user-select: none;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
 }
 
-.radio-tile input { display: none; }
-.radio-tile:hover { background-color: var(--bg-card-nested); }
+.radio-tile input { 
+  display: none; 
+}
+
+.radio-tile:hover { 
+  background-color: var(--bg-card-nested);
+  border-color: var(--border-active);
+}
+
 .radio-tile.active {
-  border-color: var(--accent-brand);
-  background-color: rgba(99, 102, 241, 0.08);
-  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.02);
+  color: var(--text-core);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme="dark"] .radio-tile.active,
+:root:not([data-theme="light"]) .radio-tile.active {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* SIDEBAR CHAPTER TREE NAVIGATOR */
@@ -242,7 +332,12 @@ html, body, #root, .app-window-root {
 }
 
 .chapter-tree-header h3 { margin-bottom: 0; }
-.counter-tag { font-size: 0.72rem; color: var(--text-disabled); font-weight: 500; }
+.counter-tag { 
+  font-size: 0.72rem; 
+  color: var(--text-disabled); 
+  font-weight: 500; 
+  transition: color 0.15s ease;
+}
 
 .chapter-vertical-list {
   flex: 1;
@@ -255,7 +350,7 @@ html, body, #root, .app-window-root {
 }
 
 .sidebar-chapter-node {
-  background-color: rgba(0, 0, 0, 0.15);
+  background-color: rgba(0, 0, 0, 0.04);
   border: 1px solid transparent;
   padding: 8px 12px;
   border-radius: 4px;
@@ -264,6 +359,11 @@ html, body, #root, .app-window-root {
   justify-content: space-between;
   cursor: pointer;
   transition: all 0.15s ease;
+}
+
+html[data-theme="dark"] .sidebar-chapter-node,
+:root:not([data-theme="light"]) .sidebar-chapter-node {
+  background-color: rgba(0, 0, 0, 0.15);
 }
 
 .sidebar-chapter-node:hover {
@@ -301,6 +401,7 @@ html, body, #root, .app-window-root {
   margin-top: auto;
   border-top: 1px solid var(--border-subtle);
   padding-top: 14px;
+  transition: border-color 0.15s ease;
 }
 
 .system-progress-wrapper {
@@ -317,19 +418,21 @@ html, body, #root, .app-window-root {
   flex: 1;
   margin-right: 10px;
   overflow: hidden;
+  transition: background-color 0.15s ease;
 }
 
 .progress-bar-thumb {
   background-color: var(--accent-brand);
   height: 100%;
   width: 0;
-  transition: width 0.3s ease;
+  transition: width 0.3s ease, background-color 0.15s ease;
 }
 
 .progress-percentage-label {
   font-size: 0.72rem;
   font-family: monospace;
   color: var(--text-secondary);
+  transition: color 0.15s ease;
 }
 
 .btn-success-runner {
@@ -361,6 +464,7 @@ html, body, #root, .app-window-root {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: background-color 0.15s ease;
 }
 
 /* EMPTY STATE CONTEXT */
@@ -391,6 +495,7 @@ html, body, #root, .app-window-root {
   color: var(--text-secondary);
   max-width: 460px;
   line-height: 1.5;
+  transition: color 0.15s ease;
 }
 
 /* ACTIVE WORKSPACE GRID CORES */
@@ -401,7 +506,7 @@ html, body, #root, .app-window-root {
 }
 
 .workspace-sticky-control-header {
-  background-color: rgba(24, 24, 27, 0.8);
+  background-color: var(--bg-panel-viewport);
   backdrop-filter: blur(8px);
   padding: 16px 24px;
   border-bottom: 1px solid var(--border-subtle);
@@ -410,6 +515,7 @@ html, body, #root, .app-window-root {
   justify-content: space-between;
   gap: 20px;
   flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .workspace-meta-info {
@@ -417,11 +523,16 @@ html, body, #root, .app-window-root {
 }
 
 .workspace-meta-info h2 { font-size: 1.1rem; font-weight: 600; }
-.chapter-meta-subtitle { font-size: 0.82rem; color: var(--text-secondary); margin-top: 2px; }
+.chapter-meta-subtitle { 
+  font-size: 0.82rem; 
+  color: var(--text-secondary); 
+  margin-top: 2px; 
+  transition: color 0.15s ease;
+}
 
 .btn-trigger-segment-translate {
   background-color: transparent;
-  color: #ffffff;
+  color: var(--text-core);
   border: 1px solid var(--border-active);
   font-size: 0.82rem;
   font-weight: 500;
@@ -437,7 +548,7 @@ html, body, #root, .app-window-root {
 
 .btn-trigger-segment-translate:hover:not(:disabled) {
   background-color: rgba(255, 255, 255, 0.04);
-  border-color: #ffffff;
+  border-color: var(--text-core);
 }
 
 .btn-trigger-segment-translate:disabled {
@@ -471,16 +582,17 @@ html, body, #root, .app-window-root {
 }
 
 .source-segment-box {
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: var(--bg-card-nested);
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
   padding: 14px;
   font-size: 0.9rem;
   line-height: 1.6;
-  color: #dbdbdb;
+  color: var(--text-core);
   white-space: pre-wrap;
   word-break: break-word;
   text-align: left;
+  transition: all 0.15s ease;
 }
 
 .target-segment-box-wrapper {
@@ -502,7 +614,7 @@ html, body, #root, .app-window-root {
   font-family: var(--font-interface);
   resize: vertical;
   outline: none;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
 }
 
 .target-segment-textarea:focus {
@@ -530,10 +642,11 @@ html, body, #root, .app-window-root {
   font-style: italic;
   font-size: 0.9rem;
   text-align: left;
+  transition: color 0.15s ease;
 }
 
 /* SCROLLBAR REFINEMENTS */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-active); }
