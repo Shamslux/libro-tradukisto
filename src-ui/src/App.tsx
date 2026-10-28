@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { EpubProcessor } from 'src-core';
 import type { TranslationSegment, TranslatedBlockInput } from 'src-core';
 import { invoke } from '@tauri-apps/api/core';
+import { getVersion } from '@tauri-apps/api/app';
 import { save } from '@tauri-apps/plugin-dialog';
 import './App.css';
 import languagesData from './languages.json';
@@ -166,6 +167,23 @@ const getCacheKeyName = (fullPath: string, targetLang: string): string => {
 // 🚀 MAIN APPLICATION WORKSPACE COMPONENT
 // ==========================================
 export default function App() {
+  const [appVersion, setAppVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    getVersion()
+      .then((version) => {
+        if (active) setAppVersion(version);
+      })
+      .catch(() => {
+        // Keep the version badge hidden if the native API is unavailable.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
   const [showTour, setShowTour] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showHelpMenu, setShowHelpMenu] = useState(false);
@@ -843,7 +861,9 @@ export default function App() {
             style={{ objectFit: 'contain', flexShrink: 0, display: 'block' }}
           />
           <h1>{t['title'] || 'Libro Tradukisto'}</h1>
-          <span className="app-version-badge">v0.1.0-alpha</span>
+          {appVersion && (
+            <span className="app-version-badge">v{appVersion}-alpha</span>
+          )}
         </div>
         <div className="about-menu-anchor">
           <button type="button" className="onboarding-reopen" onClick={() => setShowHelpMenu(current => !current)} title={tr('aboutHelpMenu')} aria-label={tr('aboutHelpMenu')} aria-expanded={showHelpMenu} aria-haspopup="true">?</button>
