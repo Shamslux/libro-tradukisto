@@ -26,30 +26,7 @@ html[data-theme="dark"] {
   --font-interface: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* ☀️ Light Theme Variables (System Preference) */
-@media (prefers-color-scheme: light) {
-  :root {
-    color-scheme: light;
-    --bg-app-root: #f4f4f5;
-    --bg-panel-sidebar: #ffffff;
-    --bg-panel-viewport: #fafafa;
-    --bg-card-nested: #e4e4e7;
-    --border-subtle: #e4e4e7;
-    --border-active: #a1a1aa;
-    
-    --text-core: #09090b;
-    --text-secondary: #71717a;
-    --text-disabled: #a1a1aa;
-
-    --accent-brand: #4f46e5;
-    --accent-brand-hover: #4338ca;
-    --accent-positive: #059669;
-    --accent-warning: #d97706;
-    --accent-negative: #dc2626;
-  }
-}
-
-/* ☀️ Light Theme Explicit Attribute Force */
+/* ☀️ Light Theme Explicit Attribute Force (Completely independent of host OS preferences) */
 html[data-theme="light"] {
   color-scheme: light;
   --bg-app-root: #f4f4f5;
@@ -184,9 +161,8 @@ html, body, #root, .app-window-root {
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-/* Explicit fallback adjustments for pure dark themes to preserve subtle depth */
-html[data-theme="dark"] .sidebar-section-card,
-:root:not([data-theme="light"]) .sidebar-section-card {
+/* Card layout layer explicit visibility tweaks inside active dark configurations */
+html[data-theme="dark"] .sidebar-section-card {
   background-color: rgba(24, 24, 27, 0.4);
 }
 
@@ -233,8 +209,7 @@ html[data-theme="dark"] .sidebar-section-card,
   transition: background-color 0.15s ease;
 }
 
-html[data-theme="dark"] .file-path-badge,
-:root:not([data-theme="light"]) .file-path-badge {
+html[data-theme="dark"] .file-path-badge {
   background-color: rgba(0, 0, 0, 0.2);
 }
 
@@ -311,8 +286,7 @@ html[data-theme="dark"] .file-path-badge,
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-html[data-theme="dark"] .radio-tile.active,
-:root:not([data-theme="light"]) .radio-tile.active {
+html[data-theme="dark"] .radio-tile.active {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
@@ -361,8 +335,7 @@ html[data-theme="dark"] .radio-tile.active,
   transition: all 0.15s ease;
 }
 
-html[data-theme="dark"] .sidebar-chapter-node,
-:root:not([data-theme="light"]) .sidebar-chapter-node {
+html[data-theme="dark"] .sidebar-chapter-node {
   background-color: rgba(0, 0, 0, 0.15);
 }
 
@@ -650,3 +623,34 @@ html[data-theme="dark"] .sidebar-chapter-node,
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-active); }
+/* QA-011A: first-run welcome dialog */
+.onboarding-reopen { border: 1px solid var(--border-active); background: var(--bg-card-nested); color: var(--text-core); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-weight: 700; flex-shrink: 0; }
+.onboarding-reopen:hover { border-color: var(--accent-brand); }
+.onboarding-overlay { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.72); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.onboarding-dialog { width: min(100%, 480px); max-height: 90vh; overflow: auto; padding: 30px; border: 1px solid var(--border-active); border-radius: 18px; background: var(--bg-panel-sidebar); color: var(--text-core); box-shadow: 0 24px 90px rgba(0,0,0,.45); display: grid; gap: 16px; }
+.onboarding-emblem { color: var(--accent-positive); font-size: 32px; }
+.onboarding-dialog h2 { font-size: 1.5rem; line-height: 1.3; }
+.onboarding-dialog p { line-height: 1.5; color: var(--text-secondary); }
+.onboarding-intro-list { display: grid; gap: 10px; padding: 16px; border-radius: 10px; background: var(--bg-card-nested); }
+.onboarding-note { font-size: .86rem; }
+.onboarding-primary { border: 0; border-radius: 10px; background: var(--accent-brand); color: #fff; font-weight: 650; padding: 12px 16px; cursor: pointer; }
+.onboarding-primary:hover { background: var(--accent-brand-hover); }
+.onboarding-primary:focus-visible, .onboarding-reopen:focus-visible { outline: 3px solid var(--accent-positive); outline-offset: 3px; }
+
+/* QA-011B: contextual tour */
+.onboarding-welcome-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.tour-root { position: fixed; inset: 0; z-index: 11000; pointer-events: none; }
+.tour-dimmer { position: fixed; inset: 0; background: rgba(0,0,0,.76); pointer-events: auto; }
+.tour-focus-ring { position: fixed; border: 2px solid var(--accent-positive); border-radius: 9px; box-shadow: 0 0 0 3px rgba(255,255,255,.16); pointer-events: none; }
+.tour-panel { position: fixed; max-height: calc(100vh - 32px); overflow-y: auto; border: 1px solid var(--border-active); border-radius: 14px; background: var(--bg-panel-sidebar); color: var(--text-core); box-shadow: 0 16px 50px rgba(0,0,0,.5); padding: 18px; display: grid; gap: 12px; pointer-events: auto; }
+.tour-panel:focus { outline: none; }
+.tour-panel-top { display: flex; justify-content: space-between; align-items: center; font-size: .75rem; color: var(--text-secondary); }
+.tour-close { background: transparent; border: 0; color: var(--text-core); font-size: 24px; cursor: pointer; }
+.tour-progress-track { height: 4px; border-radius: 4px; overflow: hidden; background: var(--border-subtle); }
+.tour-progress-track > div { height: 100%; background: var(--accent-positive); transition: width .2s; }
+.tour-panel h2 { font-size: 1.15rem; margin: 0; }
+.tour-panel p { font-size: .9rem; color: var(--text-secondary); line-height: 1.55; margin: 0; }
+.tour-controls, .tour-controls > div { display: flex; gap: 8px; justify-content: space-between; align-items: center; }
+.tour-secondary { background: var(--bg-card-nested); color: var(--text-core); border: 1px solid var(--border-active); border-radius: 9px; padding: 10px 12px; cursor: pointer; }
+.tour-secondary:disabled { opacity: .4; cursor: default; }
+.tour-panel button:focus-visible, .onboarding-welcome-actions button:focus-visible { outline: 2px solid var(--accent-positive); outline-offset: 2px; }

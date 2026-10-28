@@ -1,152 +1,247 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.GoogleFreeClient = void 0;
-const axios_1 = __importDefault(require("axios"));
-const cheerio = __importStar(require("cheerio"));
-class GoogleFreeClient {
-    endpoint = 'https://translate.googleapis.com/translate_a/single';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+export class GoogleFreeClient {
+    static gtxEndpoint = 'https://translate.googleapis.com/translate_a/single';
+    static cloudEndpoint = 'https://translation.googleapis.com/language/translate/v2';
+    static maxAttempts = 3;
+    static maxRetryDelayMs = 60_000;
+    static maxCacheEntries = 5000;
+    static queueByMode = new Map();
+    static nextRequestAt = new Map();
+    static blockedModes = new Set();
+    static cache = new Map();
     targetLanguage;
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'
-    };
-    constructor(targetLanguage = 'eo') {
-        this.targetLanguage = targetLanguage;
+    mode;
+    apiKey;
+    minIntervalMs;
+    timeoutMs;
+    constructor(targetLanguage = 'eo', options = {}) {
+        if (!targetLanguage.trim())
+            throw new Error('Target language is required.');
+        this.targetLanguage = this.normalizeLanguage(targetLanguage);
+        this.mode = options.mode ?? 'gtx';
+        this.apiKey = options.apiKey?.trim();
+        this.minIntervalMs = options.minIntervalMs ?? 3000;
+        this.timeoutMs = options.timeoutMs ?? 15000;
+        if (!Number.isFinite(this.minIntervalMs) || this.minIntervalMs < 0) {
+            throw new Error('minIntervalMs must be a non-negative number.');
+        }
+        if (!Number.isFinite(this.timeoutMs) || this.timeoutMs <= 0) {
+            throw new Error('timeoutMs must be a positive number.');
+        }
+        if (this.mode === 'cloud-v2-html' && !this.apiKey) {
+            throw new Error('An authorized Google Cloud Translation API key is required for HTML mode.');
+        }
     }
-    /**
-     * Executes an atomic GET request against the open Google GTX translation API endpoint.
-     */
-    async callApi(pureText) {
-        if (!pureText.trim())
-            return pureText;
-        const params = {
-            client: 'gtx',
-            sl: 'auto', // Source language auto-detection
-            tl: this.targetLanguage,
-            dt: 't',
-            dj: 1,
-            q: pureText
-        };
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                const response = await axios_1.default.get(this.endpoint, {
-                    params,
-                    headers: this.headers,
-                    timeout: 15000
-                });
-                if (response.status !== 200 || !response.data) {
-                    continue;
+    normalizeLanguage(language) {
+        const value = language.trim().replace(/_/g, '-');
+        if (/^pt(?:-br)?$/i.test(value))
+            return 'pt-BR';
+        if (/^pt-pt$/i.test(value))
+            return 'pt-PT';
+        return value;
+    }
+    static sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    /** Serialize requests across instances using the same transport. */
+    static enqueue(mode, task) {
+        const previous = GoogleFreeClient.queueByMode.get(mode) ?? Promise.resolve();
+        const result = previous.then(task);
+        GoogleFreeClient.queueByMode.set(mode, result.then(() => undefined, () => undefined));
+        return result;
+    }
+    static async waitForSlot(mode, intervalMs) {
+        if (GoogleFreeClient.blockedModes.has(mode)) {
+            throw new Error(`${mode} refused access. Translation is stopped for this process.`);
+        }
+        const wait = Math.max(0, (GoogleFreeClient.nextRequestAt.get(mode) ?? 0) - Date.now());
+        if (wait > 0)
+            await GoogleFreeClient.sleep(wait);
+        GoogleFreeClient.nextRequestAt.set(mode, Date.now() + intervalMs);
+    }
+    static remember(key, value) {
+        GoogleFreeClient.cache.delete(key);
+        GoogleFreeClient.cache.set(key, value);
+        if (GoogleFreeClient.cache.size > GoogleFreeClient.maxCacheEntries) {
+            const oldest = GoogleFreeClient.cache.keys().next().value;
+            if (oldest !== undefined)
+                GoogleFreeClient.cache.delete(oldest);
+        }
+    }
+    static retryAfterMs(value) {
+        if (typeof value !== 'string' && typeof value !== 'number')
+            return undefined;
+        const raw = String(value);
+        const seconds = Number(raw);
+        if (Number.isFinite(seconds) && seconds >= 0)
+            return seconds * 1000;
+        const date = Date.parse(raw);
+        if (Number.isFinite(date))
+            return Math.max(0, date - Date.now());
+        return undefined;
+    }
+    static parseGtxResponse(data) {
+        if (!data || typeof data !== 'object')
+            throw new Error('Unexpected GTX response.');
+        const sentences = data.sentences;
+        if (!Array.isArray(sentences))
+            throw new Error('GTX did not return sentences.');
+        const translated = sentences.map(item => {
+            if (!item || typeof item !== 'object')
+                return '';
+            const value = item.trans;
+            return typeof value === 'string' ? value : '';
+        }).join('');
+        if (!translated.trim())
+            throw new Error('GTX returned an empty translation.');
+        return translated;
+    }
+    static parseCloudResponse(data) {
+        if (!data || typeof data !== 'object')
+            throw new Error('Unexpected Cloud Translation response.');
+        const translations = data.data?.translations;
+        const translated = translations?.[0]?.translatedText;
+        if (typeof translated !== 'string' || !translated.trim()) {
+            throw new Error('Cloud Translation returned an empty or invalid translation.');
+        }
+        return translated;
+    }
+    async request(job) {
+        if (this.mode === 'gtx') {
+            if (job.format !== 'text')
+                throw new Error('GTX HTML mode is not supported.');
+            const response = await axios.get(GoogleFreeClient.gtxEndpoint, {
+                params: {
+                    client: 'gtx', sl: 'auto', tl: this.targetLanguage,
+                    dt: 't', dj: 1, q: job.text,
+                },
+                timeout: this.timeoutMs,
+            });
+            return GoogleFreeClient.parseGtxResponse(response.data);
+        }
+        const response = await axios.post(GoogleFreeClient.cloudEndpoint, new URLSearchParams({
+            key: this.apiKey,
+            q: job.text,
+            target: this.targetLanguage,
+            format: job.format,
+        }).toString(), {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            timeout: this.timeoutMs,
+        });
+        return GoogleFreeClient.parseCloudResponse(response.data);
+    }
+    async translate(job) {
+        if (!job.text.trim())
+            return job.text;
+        const cacheKey = JSON.stringify([this.mode, this.targetLanguage, job.format, job.text]);
+        const cached = GoogleFreeClient.cache.get(cacheKey);
+        if (cached !== undefined)
+            return cached;
+        return GoogleFreeClient.enqueue(this.mode, async () => {
+            const again = GoogleFreeClient.cache.get(cacheKey);
+            if (again !== undefined)
+                return again;
+            for (let attempt = 1; attempt <= GoogleFreeClient.maxAttempts; attempt++) {
+                await GoogleFreeClient.waitForSlot(this.mode, this.minIntervalMs);
+                try {
+                    const translated = await this.request(job);
+                    GoogleFreeClient.remember(cacheKey, translated);
+                    return translated;
                 }
-                let translatedText = '';
-                const data = response.data;
-                if (data.sentences && Array.isArray(data.sentences)) {
-                    for (const sentence of data.sentences) {
-                        if (sentence.trans) {
-                            translatedText += sentence.trans;
-                        }
+                catch (error) {
+                    const axiosError = axios.isAxiosError(error) ? error : undefined;
+                    const status = axiosError?.response?.status;
+                    if (status === 403) {
+                        GoogleFreeClient.blockedModes.add(this.mode);
+                        throw new Error(`${this.mode} returned HTTP 403. Translation stopped.`);
                     }
+                    if (status === 429) {
+                        const retryAfter = GoogleFreeClient.retryAfterMs(axiosError?.response?.headers?.['retry-after']);
+                        const pause = retryAfter ?? GoogleFreeClient.maxRetryDelayMs;
+                        GoogleFreeClient.nextRequestAt.set(this.mode, Math.max(GoogleFreeClient.nextRequestAt.get(this.mode) ?? 0, Date.now() + pause));
+                        throw new Error(`${this.mode} returned HTTP 429. Translation stopped; respect the service limit.`);
+                    }
+                    const retryable = status === undefined
+                        ? Boolean(axiosError && ['ECONNABORTED', 'ETIMEDOUT', 'ERR_NETWORK', 'ECONNRESET'].includes(axiosError.code ?? ''))
+                        : status === 408 || status >= 500;
+                    if (!retryable || attempt === GoogleFreeClient.maxAttempts) {
+                        const detail = status ? `HTTP ${status}` : error instanceof Error ? error.message : String(error);
+                        throw new Error(`Translation failed (${this.mode}): ${detail}`);
+                    }
+                    const backoff = Math.min(1000 * 2 ** (attempt - 1) + Math.floor(Math.random() * 500), GoogleFreeClient.maxRetryDelayMs);
+                    GoogleFreeClient.nextRequestAt.set(this.mode, Math.max(GoogleFreeClient.nextRequestAt.get(this.mode) ?? 0, Date.now() + backoff));
                 }
-                return translatedText;
             }
-            catch (error) {
-                if (attempt === 2) {
-                    console.error(`Error calling Google Free API after 3 attempts: {error}`);
-                    return pureText;
-                }
-                await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+            throw new Error('Translation attempts exhausted.');
+        });
+    }
+    applyGlossary(text, glossary) {
+        if (!glossary)
+            return text;
+        let result = text;
+        for (const [source, target] of Object.entries(glossary)) {
+            if (!source.trim())
+                continue;
+            const escaped = source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const pattern = new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'giu');
+            result = result.replace(pattern, () => target);
+        }
+        return result;
+    }
+    applyGlossaryToHtml(html, glossary) {
+        if (!glossary || Object.keys(glossary).length === 0)
+            return html;
+        const $ = cheerio.load(html, { xml: { decodeEntities: false } });
+        for (const node of $('*').contents().toArray()) {
+            if (node.type === 'text' && 'data' in node) {
+                node.data = this.applyGlossary(node.data, glossary);
             }
         }
-        return pureText;
+        return $.xml();
     }
     /**
-     * Fixes specific machine translation artifact errors (like "T lia" drop caps) when target is Esperanto.
-     */
-    correctChapterItem(text) {
-        const pattern = /^([^>]+>)([A-Z])(<[^>]+>)\s+lia\b/;
-        const match = text.match(pattern);
-        if (match) {
-            const [fullMatch, tag1, letter, tag2] = match;
-            if (letter === 'T') {
-                return `${tag1}Ĉi${tag2} tiu${text.substring(match.index + fullMatch.length)}`;
-            }
-            return `${tag1}${letter}${tag2} tiu${text.substring(match.index + fullMatch.length)}`;
-        }
-        return text;
-    }
-    /**
-     * Iterates through structural tags sequentially to preserve document DOM tree structures.
+     * Translate a fragment while retaining its markup.
+     * Official HTML mode translates the fragment as a whole.
+     * GTX mode translates individual text nodes to avoid destroying markup.
+     * The genreOrPrompt argument is retained for backwards compatibility.
      */
     async translateBlock(htmlText, genreOrPrompt = '', glossary) {
-        if (!htmlText || !htmlText.trim()) {
+        void genreOrPrompt;
+        if (!htmlText?.trim())
             return htmlText;
+        if (this.mode === 'cloud-v2-html') {
+            // Cloud Translation HTML mode can alter markup; validate EPUB XHTML downstream.
+            const result = await this.translate({ text: htmlText, format: 'html' });
+            // Apply glossary only to text nodes so markup and attributes remain intact.
+            return this.applyGlossaryToHtml(result, glossary);
         }
         const $ = cheerio.load(htmlText, { xml: { decodeEntities: false } });
-        const selectors = 'p, h1, h2, h3, h4, h5, h6, li, blockquote, dt, dd';
-        // Explicitly typed as any to bypass internal multi-version re-assignment errors
-        let elements = $(selectors);
-        // Fallback: If no structural tags match, safely get the first available node
-        if (elements.length === 0) {
-            elements = $('*').first();
-        }
-        // Loop sequentially through each node to translate text content safely
-        for (let i = 0; i < elements.length; i++) {
-            const targetNode = elements[i];
-            if (targetNode && targetNode.type === 'tag') {
-                const el = $(targetNode);
-                const originalText = el.text().trim();
-                if (!originalText || !/[a-zA-Z]/.test(originalText)) {
-                    continue;
+        const excluded = new Set(['script', 'style', 'code', 'pre', 'svg', 'math']);
+        const nodes = $('*').contents().toArray().filter(node => {
+            if (node.type !== 'text' || !('data' in node) || !node.data.trim())
+                return false;
+            let ancestor = node.parent;
+            while (ancestor) {
+                if ('name' in ancestor && typeof ancestor.name === 'string' && excluded.has(ancestor.name.toLowerCase())) {
+                    return false;
                 }
-                const textToTranslate = el.text();
-                let translatedText = await this.callApi(textToTranslate);
-                if (glossary && Object.keys(glossary).length > 0) {
-                    for (const [orig, trad] of Object.entries(glossary)) {
-                        const regex = new RegExp(`\\b${orig.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`, 'gi');
-                        translatedText = translatedText.replace(regex, trad);
-                    }
-                }
-                el.empty();
-                el.text(translatedText.trim());
+                ancestor = ancestor.parent;
             }
-            await new Promise(resolve => setTimeout(resolve, 200));
+            return /\p{L}/u.test(node.data);
+        });
+        for (const node of nodes) {
+            if (node.type !== 'text' || !('data' in node))
+                continue;
+            const original = node.data;
+            const leading = original.match(/^\s*/u)?.[0] ?? '';
+            const trailing = original.match(/\s*$/u)?.[0] ?? '';
+            const core = original.slice(leading.length, original.length - trailing.length);
+            if (!core.trim())
+                continue;
+            const translated = this.applyGlossary(await this.translate({ text: core, format: 'text' }), glossary);
+            node.data = leading + translated.trim() + trailing;
         }
-        const result = $.html();
-        return this.targetLanguage === 'eo' ? this.correctChapterItem(result) : result;
+        return $.xml();
     }
 }
-exports.GoogleFreeClient = GoogleFreeClient;

@@ -1,3 +1,4 @@
+
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Libro Tradukisto",
@@ -37,6 +38,20 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "windows": {
+      "nsis": {
+        "languages": [
+          "PortugueseBR",
+          "English",
+          "Spanish",
+          "French",
+          "German",
+          "Russian",
+          "SimpChinese"
+        ],
+        "displayLanguageSelector": true
+      }
+    },
     "android": {
       "debugApplicationIdSuffix": ".debug"
     }

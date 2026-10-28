@@ -1,3 +1,2 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-// Core Engine Entry Point
+// Public API for the EPUB processing core.
+export { EpubProcessor } from './parser/epubProcessor.js';

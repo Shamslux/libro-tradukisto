@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.GeminiClient = void 0;
-const genai_1 = require("@google/genai");
-class GeminiClient {
+import { GoogleGenAI } from '@google/genai';
+export class GeminiClient {
     ai;
     modelName;
     targetLanguage;
@@ -22,7 +19,7 @@ class GeminiClient {
         if (!key) {
             throw new Error("Error: GEMINI_API_KEY not found!");
         }
-        this.ai = new genai_1.GoogleGenAI({ apiKey: key });
+        this.ai = new GoogleGenAI({ apiKey: key });
         this.modelName = config.modelName || "gemini-2.0-flash";
         this.targetLanguage = config.targetLanguage || "eo";
     }
@@ -103,4 +100,3 @@ class GeminiClient {
         return "Eraro: Ne eblis traduki post pluraj provoj.";
     }
 }
-exports.GeminiClient = GeminiClient;
