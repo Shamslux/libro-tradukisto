@@ -1,6 +1,6 @@
 [package]
 name = "libro-tradukisto"
-version = "0.1.0"
+version = "0.1.1"
 description = "A desktop application for translating EPUB books while preserving their structure and formatting."
 authors = ["Shamslux"]
 license = "GPL-3.0-only"
