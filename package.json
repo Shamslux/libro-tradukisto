@@ -20,5 +20,8 @@
   "devDependencies": {
     "@tauri-apps/cli": "^2.1.0",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@tauri-apps/plugin-updater": "2.12.0"
   }
 }

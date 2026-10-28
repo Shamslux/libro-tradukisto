@@ -8,6 +8,8 @@ import languagesData from './languages.json';
 import locales from './locales.json';
 import WelcomeDialog from './components/onboarding/WelcomeDialog';
 import InteractiveTour from './components/onboarding/InteractiveTour';
+import AboutDialog from './components/about/AboutDialog';
+import UpdateDialog from './components/updates/UpdateDialog';
 
 // ==========================================
 // 🛡️ NATIVE CORE TYPE INTERFACES
@@ -165,6 +167,9 @@ const getCacheKeyName = (fullPath: string, targetLang: string): string => {
 // ==========================================
 export default function App() {
   const [showTour, setShowTour] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+  const [showHelpMenu, setShowHelpMenu] = useState(false);
+  const [showUpdater, setShowUpdater] = useState(false);
   const [showWelcome, setShowWelcome] = useState<boolean>(() => {
     try { return window.localStorage.getItem('libro-tradukisto:onboarding:v1') !== 'dismissed'; }
     catch { return true; }
@@ -809,13 +814,31 @@ export default function App() {
       
       {showWelcome && <WelcomeDialog tr={tr} onClose={dismissWelcome} onStartTour={() => { dismissWelcome(); setShowTour(true); }} />}
       {showTour && <InteractiveTour tr={tr} onClose={() => setShowTour(false)} />}
+      {showAbout && <AboutDialog tr={tr} onClose={() => setShowAbout(false)} />}
+      <UpdateDialog tr={tr} open={showUpdater} onClose={() => setShowUpdater(false)} />
             {/* 🔝 TOP HEADER BAR */}
       <header className="app-top-header">
         <div className="brand-meta">
+          <img
+            src="/libro-tradukisto.png"
+            alt=""
+            aria-hidden="true"
+            className="app-brand-icon"
+            width={26}
+            height={26}
+            style={{ objectFit: 'contain', flexShrink: 0, display: 'block' }}
+          />
           <h1>{t['title'] || 'Libro Tradukisto'}</h1>
           <span className="app-version-badge">v0.1.0-alpha</span>
         </div>
-        <button type="button" className="onboarding-reopen" onClick={() => setShowWelcome(true)} title={tr('onboardingReopen')} aria-label={tr('onboardingReopen')}>?</button>
+        <div className="about-menu-anchor">
+          <button type="button" className="onboarding-reopen" onClick={() => setShowHelpMenu(current => !current)} title={tr('aboutHelpMenu')} aria-label={tr('aboutHelpMenu')} aria-expanded={showHelpMenu} aria-haspopup="true">?</button>
+          {showHelpMenu && <div className="about-help-menu">
+            <button type="button" onClick={() => { setShowHelpMenu(false); setShowWelcome(true); }}>{tr('onboardingReopen')}</button>
+            <button type="button" onClick={() => { setShowHelpMenu(false); setShowUpdater(true); }}>{tr('updateCheck')}</button>
+            <button type="button" onClick={() => { setShowHelpMenu(false); setShowAbout(true); }}>{tr('aboutHeading')}</button>
+          </div>}
+        </div>
         <div className="status-live-container">
           <div className="status-indicator-dot"></div>
           <span className="status-live-message">{statusMessage}</span>
