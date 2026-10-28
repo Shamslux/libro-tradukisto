@@ -170,6 +170,7 @@ export default function App() {
   const [showAbout, setShowAbout] = useState(false);
   const [showHelpMenu, setShowHelpMenu] = useState(false);
   const [showUpdater, setShowUpdater] = useState(false);
+  const [pendingUpdateNotice, setPendingUpdateNotice] = useState(false);
   const [showWelcome, setShowWelcome] = useState<boolean>(() => {
     try { return window.localStorage.getItem('libro-tradukisto:onboarding:v1') !== 'dismissed'; }
     catch { return true; }
@@ -178,6 +179,14 @@ export default function App() {
     try { window.localStorage.setItem('libro-tradukisto:onboarding:v1', 'dismissed'); } catch { /* storage unavailable */ }
     setShowWelcome(false);
   };
+  // Defer automatic update notices until onboarding and other dialogs are closed.
+  useEffect(() => {
+    if (pendingUpdateNotice && !showWelcome && !showTour && !showAbout && !showUpdater) {
+      setShowUpdater(true);
+      setPendingUpdateNotice(false);
+    }
+  }, [pendingUpdateNotice, showWelcome, showTour, showAbout, showUpdater]);
+
   const [epubPath, setEpubPath] = useState<string>('');
   const [engine, setEngine] = useState<string>('google_free'); // 'google_free' | 'gemini' | 'openai' | 'claude' | 'local'
   
@@ -815,7 +824,12 @@ export default function App() {
       {showWelcome && <WelcomeDialog tr={tr} onClose={dismissWelcome} onStartTour={() => { dismissWelcome(); setShowTour(true); }} />}
       {showTour && <InteractiveTour tr={tr} onClose={() => setShowTour(false)} />}
       {showAbout && <AboutDialog tr={tr} onClose={() => setShowAbout(false)} />}
-      <UpdateDialog tr={tr} open={showUpdater} onClose={() => setShowUpdater(false)} />
+      <UpdateDialog
+        tr={tr}
+        open={showUpdater}
+        onClose={() => { setShowUpdater(false); setPendingUpdateNotice(false); }}
+        onUpdateAvailable={() => setPendingUpdateNotice(true)}
+      />
             {/* 🔝 TOP HEADER BAR */}
       <header className="app-top-header">
         <div className="brand-meta">
